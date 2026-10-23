@@ -1,0 +1,45 @@
+:root {
+  --ink: #1d2733;
+  --muted: #6b7684;
+  --line: #d9dfe7;
+  --bg: #f5f7fa;
+  --accent: #1f3a5f;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+header { max-width: 1000px; margin: 0 auto; padding: 28px 20px 8px; }
+h1 { margin: 0 0 4px; font-size: 24px; color: var(--accent); }
+header p { margin: 0; color: var(--muted); }
+main {
+  max-width: 1000px; margin: 0 auto; padding: 16px 20px 40px;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start;
+}
+@media (max-width: 760px) { main { grid-template-columns: 1fr; } }
+.panel { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 20px; }
+h2 { margin: 0 0 14px; font-size: 17px; }
+h3 { margin: 18px 0 4px; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+label { display: block; margin-bottom: 12px; font-size: 13px; color: var(--muted); }
+input, select, textarea {
+  display: block; width: 100%; margin-top: 4px; padding: 8px 10px;
+  border: 1px solid var(--line); border-radius: 6px; font: inherit; color: var(--ink); background: #fff;
+}
+textarea { resize: vertical; }
+.row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+button {
+  width: 100%; padding: 10px; border: 0; border-radius: 6px; cursor: pointer;
+  background: var(--accent); color: #fff; font: inherit; font-weight: 600;
+}
+button:hover { background: #17304f; }
+.badge { display: inline-block; padding: 5px 14px; border-radius: 999px; color: #fff; font-weight: 600; }
+.badge.approve { background: #2f855a; }
+.badge.flag { background: #c07a0a; }
+.badge.reject { background: #c53030; }
+.reason { margin: 12px 0 0; }
+.muted { color: var(--muted); }
+.note { background: #eef3fa; border: 1px solid #c9d6e8; border-radius: 6px; padding: 10px 12px; }
+.error { background: #fdecec; border: 1px solid #f2b8b8; border-radius: 6px; padding: 10px 12px; color: #8a1f1f; }
+.gate { color: #8a4b08; font-weight: 600; }
+a { color: var(--accent); }

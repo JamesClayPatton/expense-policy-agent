@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Expense Policy Agent</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header>
+    <h1>Expense Policy Agent</h1>
+    <p>Reviews an expense against the Northwind Labs policy and decides: approve, flag for a human, or reject.</p>
+  </header>
+
+  <main>
+    <section class="panel">
+      <h2>New expense</h2>
+      <form method="post">
+        <label>Load an example
+          <select id="example">
+            <option value="">Choose an example…</option>
+            {% for ex in examples %}<option value="{{ loop.index0 }}">{{ ex.label }}</option>{% endfor %}
+          </select>
+        </label>
+
+        <label>Employee
+          <select name="employee_id" required>
+            <option value="">Select…</option>
+            {% for e in employees %}
+            <option value="{{ e.id }}" {{ 'selected' if form.employee_id == e.id }}>
+              {{ e.id }} · {{ e.name }} ({{ e.role | pretty }}){{ ' · inactive' if not e.active }}
+            </option>
+            {% endfor %}
+          </select>
+        </label>
+
+        <div class="row">
+          <label>Amount ($)
+            <input name="amount" inputmode="decimal" required value="{{ form.amount }}">
+          </label>
+          <label>Category
+            <select name="category" required>
+              {% for c in categories %}<option value="{{ c }}" {{ 'selected' if form.category == c }}>{{ c | pretty }}</option>{% endfor %}
+            </select>
+          </label>
+        </div>
+
+        <div class="row">
+          <label>Transaction date
+            <input type="date" name="transaction_date" required value="{{ form.transaction_date }}">
+          </label>
+          <label>Vendor
+            <input name="vendor" required value="{{ form.vendor }}">
+          </label>
+        </div>
+
+        <label>Approved by (if approval is on record)
+          <select name="approver_id">
+            <option value="">No approval on record</option>
+            {% for e in employees if e.role != 'employee' %}
+            <option value="{{ e.id }}" {{ 'selected' if form.approver_id == e.id }}>{{ e.id }} · {{ e.name }} ({{ e.role | pretty }})</option>
+            {% endfor %}
+          </select>
+        </label>
+
+        <label>Notes
+          <textarea name="notes" rows="2">{{ form.notes }}</textarea>
+        </label>
+
+        <label>Receipt text
+          <textarea name="receipt_text" rows="3">{{ form.receipt_text }}</textarea>
+        </label>
+
+        <button type="submit">Review expense</button>
+      </form>
+    </section>
+
+    <section class="panel">
+      <h2>Decision</h2>
+      {% if review %}
+        <div class="badge {{ review.decision }}">
+          {{ {'approve': 'Approve', 'flag': 'Flag for a human', 'reject': 'Reject'}[review.decision] }}
+        </div>
+        <p class="reason">{{ review.reason }}</p>
+
+        <h3>Policy cited</h3>
+        <p>{{ review.policy_ids | join(' · ') or 'None' }}</p>
+
+        <h3>Checks run</h3>
+        <p>{{ review.tools_called | map('pretty') | join(' · ') or 'None' }}</p>
+
+        {% if review.gate_overruled %}
+          <p class="gate">The hard-rules gate changed the model's decision.</p>
+        {% endif %}
+        {% if review.trace_url %}
+          <p><a href="{{ review.trace_url }}" target="_blank" rel="noopener">Open the trace in LangSmith ↗</a></p>
+        {% endif %}
+      {% elif notice %}
+        <p class="note">{{ notice }}</p>
+      {% elif error %}
+        <p class="error">{{ error }}</p>
+      {% else %}
+        <p class="muted">Submit an expense to see the decision here.</p>
+      {% endif %}
+    </section>
+  </main>
+
+  <script>
+    const examples = {{ examples | tojson }};
+    document.getElementById('example').addEventListener('change', e => {
+      const ex = examples[e.target.value];
+      if (!ex) return;
+      for (const [key, value] of Object.entries(ex)) {
+        const el = document.querySelector(`[name="${key}"]`);
+        if (el) el.value = value;
+      }
+    });
+  </script>
+</body>
+</html>
