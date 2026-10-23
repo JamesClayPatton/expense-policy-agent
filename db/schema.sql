@@ -82,8 +82,22 @@ create table if not exists decisions (
     policy_ids         text[] not null default '{}',
     reason             text not null,
     langsmith_run_id   text,
-    created_at         timestamptz not null default now()
+    created_at         timestamptz not null default now(),
+    -- What the agent saw, kept so a judge can grade the decision later.
+    request            jsonb,
+    retrieved_ids      text[] not null default '{}',
+    tool_results       jsonb,
+    prompt_commit      text,
+    model              text
 );
+
+-- For databases created before these columns existed.
+alter table decisions
+    add column if not exists request       jsonb,
+    add column if not exists retrieved_ids text[] not null default '{}',
+    add column if not exists tool_results  jsonb,
+    add column if not exists prompt_commit text,
+    add column if not exists model         text;
 
 create index if not exists decisions_request_idx on decisions (request_id);
 

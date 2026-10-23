@@ -3,10 +3,12 @@
 Each function takes an optional open connection so one review can share a
 single connection (and a test can roll everything back). Amounts are Decimals.
 """
+import json
 from datetime import date, timedelta
 from decimal import Decimal
 
 import psycopg
+from psycopg.types.json import Jsonb
 
 from expense_agent.config import AS_OF
 from expense_agent.db import connect
@@ -17,6 +19,10 @@ COUNTED_STATUSES = ("pending", "approved", "paid")
 # Policy 2.3: a repeat within this many days of the same vendor and amount is a
 # potential duplicate. Policy 2.2 uses the same window for split purchases.
 WINDOW_DAYS = 7
+
+
+def _dumps(value) -> str:
+    return json.dumps(value, default=str)
 
 
 def _run(conn, fn):
@@ -152,21 +158,31 @@ def record_decision(request_id: str, employee_id: str, amount: Decimal, category
                     model_decision: str, final_decision: str, reason: str,
                     policy_ids: list[str], gate_overruled: bool = False,
                     gate_reason: str | None = None, langsmith_run_id: str | None = None,
+                    request: dict | None = None, retrieved_ids: list[str] = (),
+                    tool_results: list | None = None, prompt_commit: str | None = None,
+                    model: str | None = None,
                     conn: psycopg.Connection | None = None) -> dict:
-    """Write the decision to the audit log. The only write the agent can make."""
+    """Write the decision to the audit log. The only write the agent can make.
+
+    Besides the decision itself it keeps what the agent saw (request, retrieved
+    sections, tool results) so a judge can grade the decision afterwards.
+    """
     def query(c):
         with c.cursor() as cur:
             cur.execute(
                 """
                 insert into decisions (request_id, employee_id, amount, category,
                     model_decision, final_decision, gate_overruled, gate_reason,
-                    policy_ids, reason, langsmith_run_id)
-                values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    policy_ids, reason, langsmith_run_id,
+                    request, retrieved_ids, tool_results, prompt_commit, model)
+                values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 returning decision_id, created_at
                 """,
                 (request_id, employee_id, Decimal(amount), category, model_decision,
                  final_decision, gate_overruled, gate_reason, policy_ids, reason,
-                 langsmith_run_id),
+                 langsmith_run_id,
+                 Jsonb(request, dumps=_dumps), list(retrieved_ids),
+                 Jsonb(tool_results, dumps=_dumps), prompt_commit, model),
             )
             decision_id, created_at = cur.fetchone()
         c.commit()

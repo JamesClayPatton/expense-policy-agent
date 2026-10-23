@@ -21,8 +21,10 @@ def test_format_request_shows_every_field():
 
 
 def test_in_policy_lunch_is_approved():
-    r = review_expense(LUNCH)
+    r = review_expense(LUNCH, record=False)
     assert r.decision == "approve"
+    assert r.decision_id is None and r.run_id
+    assert [t["name"] for t in r.tool_results] == r.tools_called
     assert "§4.1" in r.policy_ids
     assert set(r.tools_called) >= {"get_employee", "get_budget_remaining"}
     assert r.trace_url and r.trace_url.startswith("https://smith.langchain.com/")
