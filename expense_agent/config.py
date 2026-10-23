@@ -20,6 +20,8 @@ class Settings:
     agent_model: str
     judge_model: str
     embedding_model: str
+    agent_prompt: str      # LangSmith prompt reference, e.g. expense-agent-system:3837744f
+    judge_prompt: str
     policy_pdf: Path
 
 
@@ -36,5 +38,7 @@ def load_settings() -> Settings:
         agent_model=_require("AGENT_MODEL"),
         judge_model=_require("JUDGE_MODEL"),
         embedding_model=os.environ.get("EMBEDDING_MODEL", "text-embedding-3-small"),
+        agent_prompt=_require("AGENT_PROMPT"),
+        judge_prompt=_require("JUDGE_PROMPT"),
         policy_pdf=ROOT / "data" / "policy" / "northwind_expense_policy.pdf",
     )
