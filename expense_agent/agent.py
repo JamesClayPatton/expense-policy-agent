@@ -49,7 +49,7 @@ def review_expense(request: dict, record: bool = True) -> Review:
             gate_overruled=review.gate_overruled, langsmith_run_id=review.run_id,
             request=request, retrieved_ids=review.retrieved_ids,
             tool_results=review.tool_results, prompt_commit=prompt_commit,
-            model=settings.agent_model,
+            model=settings.agent_model, trace_url=review.trace_url,
         )
         review.decision_id = row["decision_id"]
     return review

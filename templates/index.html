@@ -9,7 +9,8 @@
 <body>
   <header>
     <h1>Expense Policy Agent</h1>
-    <p>Reviews an expense against the Northwind Labs policy and decides: approve, flag for a human, or reject.</p>
+    <p>Reviews an expense against the Northwind Labs policy and decides: approve, flag for a human, or reject.
+       <a href="/admin">Dashboard</a></p>
   </header>
 
   <main>
@@ -97,11 +98,17 @@
         {% if review.gate_overruled %}
           <p class="gate">The hard-rules gate changed the model's decision.</p>
         {% endif %}
+        {% if judgement %}
+          <h3>Judge scores (1 to 5)</h3>
+          <p class="scores">
+            {% for k in scores %}<span title="{{ judgement.evidence[k] }}">{{ k | pretty }} <b>{{ judgement[k] }}</b></span>{% endfor %}
+          </p>
+        {% elif error %}
+          <p class="error">{{ error }}</p>
+        {% endif %}
         {% if review.trace_url %}
           <p><a href="{{ review.trace_url }}" target="_blank" rel="noopener">Open the trace in LangSmith ↗</a></p>
         {% endif %}
-      {% elif notice %}
-        <p class="note">{{ notice }}</p>
       {% elif error %}
         <p class="error">{{ error }}</p>
       {% else %}

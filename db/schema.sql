@@ -97,9 +97,28 @@ alter table decisions
     add column if not exists retrieved_ids text[] not null default '{}',
     add column if not exists tool_results  jsonb,
     add column if not exists prompt_commit text,
-    add column if not exists model         text;
+    add column if not exists model         text,
+    add column if not exists trace_url     text;
 
 create index if not exists decisions_request_idx on decisions (request_id);
+
+-- ---------------------------------------------------------------------------
+-- Judge scores: one row per graded decision, written after the LLM judge runs.
+-- ---------------------------------------------------------------------------
+create table if not exists judgements (
+    judgement_id       uuid primary key default gen_random_uuid(),
+    decision_id        uuid not null references decisions (decision_id) on delete cascade,
+    grounded           integer not null check (grounded between 1 and 5),
+    complete           integer not null check (complete between 1 and 5),
+    clear              integer not null check (clear between 1 and 5),
+    safe               integer not null check (safe between 1 and 5),
+    evidence           jsonb not null default '{}',
+    judge_model        text not null,
+    judge_prompt       text not null,
+    created_at         timestamptz not null default now()
+);
+
+create index if not exists judgements_decision_idx on judgements (decision_id);
 
 -- ---------------------------------------------------------------------------
 -- Seed the reference data that comes straight from the policy.
@@ -133,3 +152,4 @@ alter table budget_categories  enable row level security;
 alter table employees          enable row level security;
 alter table expenses           enable row level security;
 alter table decisions          enable row level security;
+alter table judgements         enable row level security;

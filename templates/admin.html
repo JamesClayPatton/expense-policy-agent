@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Decisions · Expense Policy Agent</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header>
+    <h1>Decisions</h1>
+    <p>Every review the agent has made, with the judge's scores. <a href="/">Back to the form</a></p>
+  </header>
+
+  <main class="wide">
+    <section class="panel">
+      <p class="summary">
+        <span>{{ rows | length }} decisions</span>
+        <span>gate overruled the model <b>{{ overruled }}</b> times</span>
+        {% for k in scores %}<span>avg {{ k | pretty | lower }} <b>{{ '%.1f' | format(averages[k]) }}</b></span>{% endfor %}
+      </p>
+
+      <table>
+        <thead>
+          <tr>
+            <th>When</th><th>Employee</th><th>Amount</th><th>Category</th><th>Decision</th>
+            {% for k in scores %}<th class="num">{{ k | pretty }}</th>{% endfor %}
+            <th>Trace</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in rows %}
+          <tr class="item" onclick="this.nextElementSibling.classList.toggle('open')">
+            <td>{{ r.created_at.strftime('%b %d %H:%M') }}</td>
+            <td>{{ r.employee_id }} · {{ r.name }}</td>
+            <td>${{ '%.2f' | format(r.amount) }}</td>
+            <td>{{ r.category | pretty }}</td>
+            <td><span class="badge small {{ r.final_decision }}">{{ r.final_decision | pretty }}</span>
+                {% if r.gate_overruled %}<span class="gate" title="{{ r.gate_reason }}">gate</span>{% endif %}</td>
+            {% for k in scores %}<td class="num">{{ r[k] if r[k] else '–' }}</td>{% endfor %}
+            <td>{% if r.trace_url %}<a href="{{ r.trace_url }}" target="_blank" rel="noopener" onclick="event.stopPropagation()">open ↗</a>{% endif %}</td>
+          </tr>
+          <tr class="detail">
+            <td colspan="{{ 6 + scores | length }}">
+              <h3>Reason</h3>
+              <p>{{ r.reason }}</p>
+              <h3>Policy cited</h3>
+              <p>{% for id in r.policy_ids %}{% if id in policy_pages %}<a href="/policy#page={{ policy_pages[id] }}" target="_blank" rel="noopener">{{ id }}</a>{% else %}{{ id }}{% endif %}{{ ' · ' if not loop.last }}{% else %}None{% endfor %}</p>
+              {% if r.gate_overruled %}<h3>Gate</h3><p class="gate">{{ r.gate_reason }}</p>{% endif %}
+              {% if r.evidence %}
+                <h3>Judge evidence</h3>
+                {% for k in scores %}<p><b>{{ k | pretty }} {{ r[k] }}.</b> {{ r.evidence[k] }}</p>{% endfor %}
+              {% endif %}
+              <p class="muted">{{ r.model }} · prompt {{ r.prompt_commit }} · judged by {{ r.judge_model or 'not yet' }}</p>
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="{{ 6 + scores | length }}" class="muted">No decisions yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </section>
+  </main>
+</body>
+</html>

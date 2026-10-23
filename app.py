@@ -14,6 +14,7 @@ from pypdf import PdfReader
 from expense_agent.agent import review_expense
 from expense_agent.config import AS_OF, ROOT, load_settings
 from expense_agent.db import connect
+from expense_agent.judge import SCORES, judge_and_record
 
 logging.basicConfig(level=logging.INFO, format="%(name)s  %(message)s")
 logging.getLogger("httpx").setLevel(logging.WARNING)
@@ -65,7 +66,7 @@ def policy():
 def index():
     form = {f: "" for f in FIELDS}
     form["transaction_date"] = AS_OF.isoformat()
-    review = notice = error = None
+    review = judgement = error = None
 
     if request.method == "POST":
         form = {f: request.form.get(f, "").strip() for f in FIELDS}
@@ -76,18 +77,49 @@ def index():
         except InvalidOperation:
             error = "Amount must be a positive number."
         else:
+            req = {**form, "amount": amount, "submitted_date": AS_OF.isoformat()}
             try:
-                review = review_expense({**form, "amount": amount, "submitted_date": AS_OF.isoformat()})
-            except NotImplementedError as e:
-                notice = str(e)
+                review = review_expense(req)
             except Exception as e:  # show the failure instead of hiding it
                 error = f"{type(e).__name__}: {e}"
+            else:
+                try:
+                    judgement = judge_and_record(review.decision_id, review.run_id, req,
+                                                 review.retrieved_ids, review.tool_results,
+                                                 review.decision, review.reason)
+                except Exception as e:  # the decision stands; say the judge failed
+                    error = f"Judge failed. {type(e).__name__}: {e}"
 
     employees, categories = load_choices()
     return render_template("index.html", form=form, employees=employees,
                            categories=categories, examples=load_examples(),
-                           policy_pages=policy_pages(),
-                           review=review, notice=notice, error=error)
+                           policy_pages=policy_pages(), scores=SCORES,
+                           review=review, judgement=judgement, error=error)
+
+
+@app.route("/admin")
+def admin():
+    with connect() as conn, conn.cursor() as cur:
+        cur.execute(
+            """
+            select d.created_at, d.employee_id, e.name, d.amount, d.category,
+                   d.model_decision, d.final_decision, d.gate_overruled, d.gate_reason,
+                   d.policy_ids, d.reason, d.trace_url, d.model, d.prompt_commit,
+                   j.grounded, j.complete, j.clear, j.safe, j.evidence, j.judge_model
+            from decisions d
+            join employees e on e.employee_id = d.employee_id
+            left join judgements j on j.decision_id = d.decision_id
+            order by d.created_at desc
+            limit 200
+            """
+        )
+        columns = [c.name for c in cur.description]
+        rows = [dict(zip(columns, r)) for r in cur.fetchall()]
+    averages = {k: (sum(r[k] for r in rows if r[k]) / max(1, sum(1 for r in rows if r[k])))
+                for k in SCORES}
+    overruled = sum(1 for r in rows if r["gate_overruled"])
+    return render_template("admin.html", rows=rows, scores=SCORES, averages=averages,
+                           overruled=overruled, policy_pages=policy_pages())
 
 
 if __name__ == "__main__":

@@ -160,7 +160,7 @@ def record_decision(request_id: str, employee_id: str, amount: Decimal, category
                     gate_reason: str | None = None, langsmith_run_id: str | None = None,
                     request: dict | None = None, retrieved_ids: list[str] = (),
                     tool_results: list | None = None, prompt_commit: str | None = None,
-                    model: str | None = None,
+                    model: str | None = None, trace_url: str | None = None,
                     conn: psycopg.Connection | None = None) -> dict:
     """Write the decision to the audit log. The only write the agent can make.
 
@@ -174,15 +174,15 @@ def record_decision(request_id: str, employee_id: str, amount: Decimal, category
                 insert into decisions (request_id, employee_id, amount, category,
                     model_decision, final_decision, gate_overruled, gate_reason,
                     policy_ids, reason, langsmith_run_id,
-                    request, retrieved_ids, tool_results, prompt_commit, model)
-                values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    request, retrieved_ids, tool_results, prompt_commit, model, trace_url)
+                values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 returning decision_id, created_at
                 """,
                 (request_id, employee_id, Decimal(amount), category, model_decision,
                  final_decision, gate_overruled, gate_reason, policy_ids, reason,
                  langsmith_run_id,
                  Jsonb(request, dumps=_dumps), list(retrieved_ids),
-                 Jsonb(tool_results, dumps=_dumps), prompt_commit, model),
+                 Jsonb(tool_results, dumps=_dumps), prompt_commit, model, trace_url),
             )
             decision_id, created_at = cur.fetchone()
         c.commit()
