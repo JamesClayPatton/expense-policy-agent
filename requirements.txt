@@ -1,5 +1,7 @@
 anthropic==2.1.0
 langchain-core==1.7.0
+langchain-openai==1.7.2
+langgraph==1.2.16
 langsmith==0.14.12
 openai==3.37.0
 psycopg[binary]==3.3.6
