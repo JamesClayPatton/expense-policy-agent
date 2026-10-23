@@ -84,7 +84,12 @@
         <p class="reason">{{ review.reason }}</p>
 
         <h3>Policy cited</h3>
-        <p>{{ review.policy_ids | join(' · ') or 'None' }}</p>
+        <p>
+          {% for id in review.policy_ids %}
+            {% if id in policy_pages %}<a href="/policy#page={{ policy_pages[id] }}" target="_blank" rel="noopener">{{ id }}</a>
+            {% else %}{{ id }}{% endif %}{{ ' · ' if not loop.last }}
+          {% else %}None{% endfor %}
+        </p>
 
         <h3>Checks run</h3>
         <p>{{ review.tools_called | map('pretty') | join(' · ') or 'None' }}</p>

@@ -3,13 +3,20 @@
 Run with: python app.py
 """
 import json
+import logging
+import re
 from decimal import Decimal, InvalidOperation
+from functools import lru_cache
 
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, send_file
+from pypdf import PdfReader
 
 from expense_agent.agent import review_expense
-from expense_agent.config import AS_OF, ROOT
+from expense_agent.config import AS_OF, ROOT, load_settings
 from expense_agent.db import connect
+
+logging.basicConfig(level=logging.INFO, format="%(name)s  %(message)s")
+logging.getLogger("httpx").setLevel(logging.WARNING)
 
 app = Flask(__name__)
 
@@ -39,6 +46,21 @@ def load_examples():
     return json.loads((ROOT / "data" / "examples.json").read_text(encoding="utf-8"))
 
 
+@lru_cache(maxsize=1)
+def policy_pages() -> dict[str, int]:
+    """Which PDF page each section heading is on, so a citation can link to it."""
+    pages = {}
+    for number, page in enumerate(PdfReader(str(load_settings().policy_pdf)).pages, start=1):
+        for section_id in re.findall(r"^(§\d+\.\d+) ", page.extract_text() or "", re.MULTILINE):
+            pages.setdefault(section_id, number)
+    return pages
+
+
+@app.route("/policy")
+def policy():
+    return send_file(load_settings().policy_pdf, mimetype="application/pdf")
+
+
 @app.route("/", methods=["GET", "POST"])
 def index():
     form = {f: "" for f in FIELDS}
@@ -64,6 +86,7 @@ def index():
     employees, categories = load_choices()
     return render_template("index.html", form=form, employees=employees,
                            categories=categories, examples=load_examples(),
+                           policy_pages=policy_pages(),
                            review=review, notice=notice, error=error)
 
 
