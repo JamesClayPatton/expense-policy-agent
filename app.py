@@ -8,13 +8,13 @@ import re
 from decimal import Decimal, InvalidOperation
 from functools import lru_cache
 
-from flask import Flask, render_template, request, send_file
+from flask import Flask, redirect, render_template, request, send_file, url_for
 from pypdf import PdfReader
 
-from expense_agent.agent import review_expense
+from expense_agent.agent import Review, review_expense
 from expense_agent.config import AS_OF, ROOT, load_settings
 from expense_agent.db import connect
-from expense_agent.judge import SCORES, judge_and_record
+from expense_agent.judge import SCORES, Judgement, judge_and_record
 
 logging.basicConfig(level=logging.INFO, format="%(name)s  %(message)s")
 logging.getLogger("httpx").setLevel(logging.WARNING)
@@ -62,6 +62,33 @@ def policy():
     return send_file(load_settings().policy_pdf, mimetype="application/pdf")
 
 
+def load_decision(decision_id: str):
+    """A saved decision, its judge scores, and the form that produced it. None if unknown."""
+    with connect() as conn, conn.cursor() as cur:
+        cur.execute(
+            """
+            select d.request, d.final_decision, d.model_decision, d.reason, d.policy_ids,
+                   d.retrieved_ids, d.tool_results, d.guard_overruled, d.guard_reason,
+                   d.langsmith_run_id, d.trace_url,
+                   j.grounded, j.complete, j.clear, j.safe, j.evidence, j.judge_model, j.judge_prompt
+            from decisions d left join judgements j on j.decision_id = d.decision_id
+            where d.decision_id::text = %s
+            """,
+            (decision_id,),
+        )
+        row = cur.fetchone()
+    if row is None:
+        return None
+    (req, decision, model_decision, reason, policy_ids, retrieved_ids, tool_results,
+     overruled, guard_reason, run_id, trace_url, *scores) = row
+    form = {f: str(req.get(f, "")) for f in FIELDS}
+    review = Review(decision, reason, policy_ids, retrieved_ids,
+                    [t["name"] for t in tool_results], tool_results, model_decision,
+                    overruled, guard_reason, run_id, trace_url, decision_id)
+    judgement = Judgement(*scores) if scores[0] is not None else None
+    return form, review, judgement
+
+
 @app.route("/", methods=["GET", "POST"])
 def index():
     form = {f: "" for f in FIELDS}
@@ -84,11 +111,16 @@ def index():
                 error = f"{type(e).__name__}: {e}"
             else:
                 try:
-                    judgement = judge_and_record(review.decision_id, review.run_id, req,
-                                                 review.retrieved_ids, review.tool_results,
-                                                 review.decision, review.reason)
-                except Exception as e:  # the decision stands; say the judge failed
-                    error = f"Judge failed. {type(e).__name__}: {e}"
+                    judge_and_record(review.decision_id, review.run_id, req, review.retrieved_ids,
+                                     review.tool_results, review.decision, review.reason)
+                except Exception:  # the decision stands; the page says it was not scored
+                    app.logger.exception("judge failed")
+                # Show the saved decision at its own URL, so a refresh does not resubmit.
+                return redirect(url_for("index", decision=review.decision_id))
+    elif request.args.get("decision"):
+        saved = load_decision(request.args["decision"])
+        if saved:
+            form, review, judgement = saved
 
     employees, categories = load_choices()
     return render_template("index.html", form=form, employees=employees,

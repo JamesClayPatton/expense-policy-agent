@@ -20,6 +20,7 @@ main {
 @media (max-width: 760px) { main { grid-template-columns: 1fr; } }
 .panel { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 20px; }
 h2 { margin: 0 0 14px; font-size: 17px; }
+h2 a { float: right; font-size: 13px; font-weight: 400; }
 h3 { margin: 18px 0 4px; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
 label { display: block; margin-bottom: 12px; font-size: 13px; color: var(--muted); }
 input, select, textarea {
@@ -33,6 +34,13 @@ button {
   background: var(--accent); color: #fff; font: inherit; font-weight: 600;
 }
 button:hover { background: #17304f; }
+button:disabled { background: var(--muted); cursor: wait; }
+.spinner {
+  display: inline-block; width: 14px; height: 14px; margin-right: 8px; vertical-align: -2px;
+  border: 2px solid var(--line); border-top-color: var(--accent); border-radius: 50%;
+  animation: spin .8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
 .badge { display: inline-block; padding: 5px 14px; border-radius: 999px; color: #fff; font-weight: 600; }
 .badge.approve { background: #2f855a; }
 .badge.flag { background: #c07a0a; }
