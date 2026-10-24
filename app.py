@@ -103,7 +103,7 @@ def admin():
         cur.execute(
             """
             select d.created_at, d.employee_id, e.name, d.amount, d.category,
-                   d.model_decision, d.final_decision, d.gate_overruled, d.gate_reason,
+                   d.model_decision, d.final_decision, d.guard_overruled, d.guard_reason,
                    d.policy_ids, d.reason, d.trace_url, d.model, d.prompt_commit,
                    j.grounded, j.complete, j.clear, j.safe, j.evidence, j.judge_model
             from decisions d
@@ -117,7 +117,7 @@ def admin():
         rows = [dict(zip(columns, r)) for r in cur.fetchall()]
     averages = {k: (sum(r[k] for r in rows if r[k]) / max(1, sum(1 for r in rows if r[k])))
                 for k in SCORES}
-    overruled = sum(1 for r in rows if r["gate_overruled"])
+    overruled = sum(1 for r in rows if r["guard_overruled"])
     return render_template("admin.html", rows=rows, scores=SCORES, averages=averages,
                            overruled=overruled, policy_pages=policy_pages())
 

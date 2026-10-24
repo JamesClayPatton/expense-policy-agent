@@ -25,7 +25,7 @@ It also suits evaluation well. Most cases have a checkable right answer (the dec
    - `get_budget_remaining(employee_id, category)`
    - `find_duplicates(employee_id, amount, date, vendor)`
 4. **Structured decision.** `{decision, policy_ids, reason}`, validated against a schema.
-5. **Hard-rules gate.** Plain code, not the LLM. It enforces the non-negotiables: no auto-approval above the employee's limit, no approval without a cited policy section. If the model breaks a rule, the gate downgrades the decision to "flag". How often the gate overrules the model is itself a metric.
+5. **Guard.** Plain code, not the LLM. It enforces the non-negotiables: no approval above the approver's limit, no approval without a cited policy section, no duplicate, no budget overrun. If the model breaks a rule, the guard downgrades the decision to "flag". How often the guard overrules the model is itself a metric.
 6. **Action.** `record_decision(...)` is the only write in the system, and it is always the last step.
 
 Single-shot by design: if information is missing (no receipt, unclear category), the agent flags the request and says what is missing instead of asking follow-up questions.
@@ -53,7 +53,7 @@ Single-shot by design: if information is missing (no receipt, unclear category),
  └────────┬────────┘
           ▼
  ┌─────────────────┐
- │ 5. Hard rules   │  code overrides unsafe approvals
+ │ 5. Guard        │  code overrides unsafe approvals
  └────────┬────────┘
           ▼
    approve / flag / reject ──▶ record_decision
@@ -108,9 +108,9 @@ The judge will be calibrated against a set of hand-labeled explanations. I'll re
 ## Production evaluation (sketch)
 
 - Trace every request, with PII redacted before logging.
-- Online checks on every decision: schema valid, citations real, gate not triggered, tools called in order.
+- Online checks on every decision: schema valid, citations real, guard not triggered, tools called in order.
 - Sample a slice of approvals and flags for human review, weighted toward high amounts and low-confidence cases.
-- Track the override rate (a human reverses the agent) as the main quality signal, and the gate-trigger rate as an early warning.
+- Track the override rate (a human reverses the agent) as the main quality signal, and the guard-trigger rate as an early warning.
 - Feed every human reversal back into the dataset as a new test case.
 
 ## Known risks I expect to hit

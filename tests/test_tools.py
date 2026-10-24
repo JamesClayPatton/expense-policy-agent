@@ -138,13 +138,13 @@ def test_record_decision_writes_audit_row():
         out = record_decision(
             request_id="test-1", employee_id="E012", amount=Decimal("45.00"), category="meals",
             model_decision="approve", final_decision="flag", reason="over budget",
-            policy_ids=["§8.1"], gate_overruled=True, gate_reason="budget exceeded",
+            policy_ids=["§8.1"], guard_overruled=True, guard_reason="budget exceeded",
             langsmith_run_id=None, request={"amount": Decimal("45.00"), "vendor": "Harbor Grill"},
             retrieved_ids=["§4.1", "§8.1"], tool_results=[{"name": "get_employee", "content": {"found": True}}],
             prompt_commit="3837744f", model="gpt-5-mini", conn=c,
         )
         with c.cursor() as cur:
-            cur.execute("""select final_decision, gate_overruled, policy_ids, request->>'amount',
+            cur.execute("""select final_decision, guard_overruled, policy_ids, request->>'amount',
                                   retrieved_ids, tool_results->0->>'name', prompt_commit
                            from decisions where decision_id = %s""", (out["decision_id"],))
             assert cur.fetchone() == ("flag", True, ["§8.1"], "45.00", ["§4.1", "§8.1"],

@@ -1,5 +1,6 @@
 """The expense review agent. The web page calls review_expense() and nothing else."""
 import json
+import logging
 import uuid
 from dataclasses import dataclass, field
 from functools import lru_cache
@@ -10,18 +11,23 @@ from langsmith.run_helpers import get_current_run_tree
 
 from expense_agent.config import load_settings
 from expense_agent.graph import build_graph
+from expense_agent.guard import guard
 from expense_agent.tools import record_decision
+
+log = logging.getLogger("expense_agent")
 
 
 @dataclass
 class Review:
-    decision: str                       # approve | flag | reject
+    decision: str                       # approve | flag | reject, after the guard
     reason: str
     policy_ids: list[str] = field(default_factory=list)
     retrieved_ids: list[str] = field(default_factory=list)
     tools_called: list[str] = field(default_factory=list)
     tool_results: list[dict] = field(default_factory=list)
-    gate_overruled: bool = False
+    model_decision: str = ""            # what the model said before the guard
+    guard_overruled: bool = False
+    guard_reason: str | None = None
     run_id: str | None = None           # LangSmith trace
     trace_url: str | None = None
     decision_id: str | None = None      # audit row, when recorded
@@ -44,9 +50,10 @@ def review_expense(request: dict, record: bool = True) -> Review:
         row = record_decision(
             request_id=str(uuid.uuid4()), employee_id=request["employee_id"],
             amount=request["amount"], category=request["category"],
-            model_decision=review.decision, final_decision=review.decision,
+            model_decision=review.model_decision, final_decision=review.decision,
             reason=review.reason, policy_ids=review.policy_ids,
-            gate_overruled=review.gate_overruled, langsmith_run_id=review.run_id,
+            guard_overruled=review.guard_overruled, guard_reason=review.guard_reason,
+            langsmith_run_id=review.run_id,
             request=request, retrieved_ids=review.retrieved_ids,
             tool_results=review.tool_results, prompt_commit=prompt_commit,
             model=settings.agent_model, trace_url=review.trace_url,
@@ -67,13 +74,19 @@ def _review(request: dict, graph, metadata: dict) -> Review:
                     if isinstance(m, AIMessage) for c in m.tool_calls if c["name"] != "Decision"]
     tool_results = [{"name": m.name, "content": json.loads(m.content)}
                     for m in state["messages"] if isinstance(m, ToolMessage)]
+    verdict = guard(d.decision, request, d.policy_ids)
+    if verdict.overruled:
+        log.info("guard overruled %s: %s", d.decision, verdict.reason)
     return Review(
-        decision=d.decision,
+        decision=verdict.decision,
         reason=d.reason,
         policy_ids=d.policy_ids,
         retrieved_ids=[s.section_id for s in state["sections"]],
         tools_called=tools_called,
         tool_results=tool_results,
+        model_decision=d.decision,
+        guard_overruled=verdict.overruled,
+        guard_reason=verdict.reason,
         run_id=str(run.id) if run is not None else None,
         trace_url=run.get_url() if run is not None else None,
     )

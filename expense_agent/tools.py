@@ -156,8 +156,8 @@ def find_duplicates(employee_id: str, vendor: str, amount: Decimal, transaction_
 
 def record_decision(request_id: str, employee_id: str, amount: Decimal, category: str,
                     model_decision: str, final_decision: str, reason: str,
-                    policy_ids: list[str], gate_overruled: bool = False,
-                    gate_reason: str | None = None, langsmith_run_id: str | None = None,
+                    policy_ids: list[str], guard_overruled: bool = False,
+                    guard_reason: str | None = None, langsmith_run_id: str | None = None,
                     request: dict | None = None, retrieved_ids: list[str] = (),
                     tool_results: list | None = None, prompt_commit: str | None = None,
                     model: str | None = None, trace_url: str | None = None,
@@ -172,14 +172,14 @@ def record_decision(request_id: str, employee_id: str, amount: Decimal, category
             cur.execute(
                 """
                 insert into decisions (request_id, employee_id, amount, category,
-                    model_decision, final_decision, gate_overruled, gate_reason,
+                    model_decision, final_decision, guard_overruled, guard_reason,
                     policy_ids, reason, langsmith_run_id,
                     request, retrieved_ids, tool_results, prompt_commit, model, trace_url)
                 values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 returning decision_id, created_at
                 """,
                 (request_id, employee_id, Decimal(amount), category, model_decision,
-                 final_decision, gate_overruled, gate_reason, policy_ids, reason,
+                 final_decision, guard_overruled, guard_reason, policy_ids, reason,
                  langsmith_run_id,
                  Jsonb(request, dumps=_dumps), list(retrieved_ids),
                  Jsonb(tool_results, dumps=_dumps), prompt_commit, model, trace_url),

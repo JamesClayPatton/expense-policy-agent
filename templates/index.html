@@ -95,8 +95,8 @@
         <h3>Checks run</h3>
         <p>{{ review.tools_called | map('pretty') | join(' · ') or 'None' }}</p>
 
-        {% if review.gate_overruled %}
-          <p class="gate">The hard-rules gate changed the model's decision.</p>
+        {% if review.guard_overruled %}
+          <p class="guard">The guard changed the model's {{ review.model_decision }} to a flag: {{ review.guard_reason }}.</p>
         {% endif %}
         {% if judgement %}
           <h3>Judge scores (1 to 5)</h3>

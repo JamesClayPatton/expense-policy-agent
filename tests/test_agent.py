@@ -23,6 +23,7 @@ def test_format_request_shows_every_field():
 def test_in_policy_lunch_is_approved():
     r = review_expense(LUNCH, record=False)
     assert r.decision == "approve"
+    assert r.model_decision == "approve" and not r.guard_overruled and r.guard_reason is None
     assert r.decision_id is None and r.run_id
     assert [t["name"] for t in r.tool_results] == r.tools_called
     assert "§4.1" in r.policy_ids

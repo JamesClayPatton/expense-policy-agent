@@ -41,7 +41,7 @@ button:hover { background: #17304f; }
 .muted { color: var(--muted); }
 .note { background: #eef3fa; border: 1px solid #c9d6e8; border-radius: 6px; padding: 10px 12px; }
 .error { background: #fdecec; border: 1px solid #f2b8b8; border-radius: 6px; padding: 10px 12px; color: #8a1f1f; }
-.gate { color: #8a4b08; font-weight: 600; }
+.guard { color: #8a4b08; font-weight: 600; }
 a { color: var(--accent); }
 
 /* judge scores on the decision panel */
@@ -63,4 +63,4 @@ tr.detail.open { display: table-row; }
 tr.detail td { background: var(--bg); padding: 4px 16px 14px; }
 tr.detail h3 { margin-top: 12px; }
 .badge.small { padding: 2px 10px; font-size: 13px; }
-td .gate { font-size: 12px; margin-left: 6px; }
+td .guard { font-size: 12px; margin-left: 6px; }

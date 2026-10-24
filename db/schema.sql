@@ -77,8 +77,8 @@ create table if not exists decisions (
     category           text not null,
     model_decision     text not null check (model_decision in ('approve', 'flag', 'reject')),
     final_decision     text not null check (final_decision in ('approve', 'flag', 'reject')),
-    gate_overruled     boolean not null default false,   -- hard-rules gate changed the model's call
-    gate_reason        text,
+    guard_overruled    boolean not null default false,   -- the guard changed the model's call
+    guard_reason       text,
     policy_ids         text[] not null default '{}',
     reason             text not null,
     langsmith_run_id   text,
