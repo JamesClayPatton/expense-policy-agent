@@ -1,7 +1,9 @@
 """The judge: one real call to Claude on a fixed decision, plus parsing."""
 from decimal import Decimal
 
-from expense_agent.judge import SCORES, _parse, judge
+from types import SimpleNamespace
+
+from expense_agent.judge import SCORES, _parse, _text, judge
 
 LUNCH = {
     "employee_id": "E019", "amount": Decimal("28.50"), "category": "meals",
@@ -21,6 +23,12 @@ TOOL_RESULTS = [
 
 def test_parse_strips_a_code_fence():
     assert _parse('```json\n{"grounded": 4}\n```') == {"grounded": 4}
+
+
+def test_text_skips_a_thinking_block():
+    blocks = [SimpleNamespace(type="thinking", thinking="hmm"),
+              SimpleNamespace(type="text", text='{"grounded": 4}')]
+    assert _text(blocks) == '{"grounded": 4}'
 
 
 def test_judge_scores_a_grounded_reason():

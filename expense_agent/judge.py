@@ -24,6 +24,19 @@ SCORES = ("grounded", "complete", "clear", "safe")
 NO_REFERENCE = ("No reference for this review. Judge against the policy sections "
                 "and the tool results only.")
 
+# The judge's reply is held to this schema by the API, so every score is
+# present and the JSON always parses.
+SCHEMA = {
+    "type": "object",
+    "properties": {
+        **{k: {"type": "integer", "enum": [1, 2, 3, 4, 5]} for k in SCORES},
+        "evidence": {"type": "object", "properties": {k: {"type": "string"} for k in SCORES},
+                     "required": list(SCORES), "additionalProperties": False},
+    },
+    "required": [*SCORES, "evidence"],
+    "additionalProperties": False,
+}
+
 
 @dataclass
 class Judgement:
@@ -46,6 +59,11 @@ def _parse(text: str) -> dict:
     return json.loads(text)
 
 
+def _text(content) -> str:
+    """The reply's text block. The model may put a thinking block before it."""
+    return next(b.text for b in content if b.type == "text")
+
+
 @traceable(name="judge_decision", run_type="chain")
 def judge(request: dict, retrieved_ids: list[str], tool_results: list[dict],
           decision: str, reason: str, reference: str = NO_REFERENCE) -> Judgement:
@@ -60,11 +78,12 @@ def judge(request: dict, retrieved_ids: list[str], tool_results: list[dict],
         reference=reference,
     )
     reply = wrap_anthropic(Anthropic()).messages.create(
-        model=settings.judge_model, max_tokens=800,
+        model=settings.judge_model, max_tokens=1200,
         system=system.content,
         messages=[{"role": "user", "content": human.content}],
+        output_config={"format": {"type": "json_schema", "schema": SCHEMA}},
     )
-    data = _parse(reply.content[0].text)
+    data = _parse(_text(reply.content))
     return Judgement(
         **{k: int(data[k]) for k in SCORES},
         evidence={k: str(v) for k, v in data.get("evidence", {}).items()},
