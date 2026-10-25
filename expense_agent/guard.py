@@ -17,8 +17,10 @@ import psycopg
 from langsmith import traceable
 
 from expense_agent import retrieval, tools
+from expense_agent.config import AS_OF
 
 NO_APPROVAL_LIMIT = Decimal("250")   # policy 1.2: above this, approval is required
+SUBMISSION_DAYS = 30                 # policy 1.1: later than this needs a human
 
 
 @dataclass
@@ -42,6 +44,12 @@ def check(request: dict, policy_ids: list[str], conn: psycopg.Connection | None 
     else:
         found = {s.section_id for s in retrieval.get_sections(policy_ids, conn=conn)}
         reasons += [f"cited section {id} does not exist" for id in policy_ids if id not in found]
+
+    # Submission deadline (policy 1.1). Date arithmetic is not the model's strength.
+    submitted = date.fromisoformat(str(request.get("submitted_date") or AS_OF))
+    if (submitted - when).days > SUBMISSION_DAYS:
+        reasons.append(f"submitted {(submitted - when).days} days after the transaction, "
+                       f"over the {SUBMISSION_DAYS}-day limit (§1.1)")
 
     employee = tools.get_employee(employee_id, conn=conn)
     if not employee["found"]:

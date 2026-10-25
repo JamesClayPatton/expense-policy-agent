@@ -51,6 +51,15 @@ def test_over_250_without_approval(conn):
     assert reasons == ["$250.01 is over $250 with no approval on record (§1.2)"]
 
 
+def test_late_submission(conn):
+    """Day 30 is on time, day 31 is late. Both after runs got this wrong in the model."""
+    on_time = {**LUNCH, "transaction_date": "2026-09-22", "submitted_date": "2026-10-22"}
+    late = {**LUNCH, "transaction_date": "2026-09-21", "submitted_date": "2026-10-22"}
+    assert check(on_time, ["§4.1"], conn=conn) == []
+    assert check(late, ["§4.1"], conn=conn) == [
+        "submitted 31 days after the transaction, over the 30-day limit (§1.1)"]
+
+
 def test_unknown_approver(conn):
     assert check({**LUNCH, "approver_id": "E999"}, ["§4.1"], conn=conn) == ["approver E999 not found"]
 
