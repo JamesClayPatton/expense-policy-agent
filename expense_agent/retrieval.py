@@ -11,7 +11,12 @@ from openai import OpenAI
 from expense_agent.config import load_settings
 from expense_agent.db import connect
 
-TOP_K = 6
+# Sections that apply to every expense, whatever it sounds like: eligibility,
+# approval authority, splits, duplicates, budgets, prohibited items, gaps. The
+# baseline missed these constantly because an expense's text rarely resembles
+# them, so they are always in context and the search picks the category rules.
+CONTROL_SECTIONS = ("§1.1", "§1.2", "§2.1", "§2.2", "§2.3", "§8.1", "§9.1", "§9.2")
+TOP_K = 4
 
 
 @dataclass
@@ -47,7 +52,8 @@ def _rows_to_sections(rows) -> list[Section]:
             for r in rows]
 
 
-def search(text: str, k: int = TOP_K, conn: psycopg.Connection | None = None) -> list[Section]:
+def search(text: str, k: int = TOP_K, exclude: tuple[str, ...] = (),
+           conn: psycopg.Connection | None = None) -> list[Section]:
     """Top-k policy sections by cosine similarity to the text."""
     vec = embed_query(text)
 
@@ -58,10 +64,11 @@ def search(text: str, k: int = TOP_K, conn: psycopg.Connection | None = None) ->
                 select section_id, chapter, title, content,
                        1 - (embedding <=> %s::vector) as score
                 from policy_chunks
+                where section_id != all(%s)
                 order by embedding <=> %s::vector
                 limit %s
                 """,
-                (str(vec), str(vec), k),
+                (str(vec), list(exclude), str(vec), k),
             )
             return _rows_to_sections(cur.fetchall())
 
@@ -69,6 +76,12 @@ def search(text: str, k: int = TOP_K, conn: psycopg.Connection | None = None) ->
         return query(conn)
     with connect() as own:
         return query(own)
+
+
+def retrieve(request: dict, conn: psycopg.Connection | None = None) -> list[Section]:
+    """The sections the agent sees: the control sections, then the best matches."""
+    return (get_sections(list(CONTROL_SECTIONS), conn=conn)
+            + search(query_text(request), exclude=CONTROL_SECTIONS, conn=conn))
 
 
 def get_sections(section_ids: list[str], conn: psycopg.Connection | None = None) -> list[Section]:

@@ -6,7 +6,8 @@ run can show them before any retrieval change is made.
 import pytest
 
 from expense_agent.db import connect
-from expense_agent.retrieval import format_sections, get_sections, query_text, search
+from expense_agent.retrieval import (CONTROL_SECTIONS, TOP_K, format_sections, get_sections,
+                                     query_text, retrieve, search)
 
 
 @pytest.fixture(scope="module")
@@ -60,6 +61,16 @@ def test_crypto_finds_exceptions_rule(conn):
 def test_late_receipt_finds_submission_rule(conn):
     hits = search("Receipt from 45 days ago, forgot to submit it", conn=conn)
     assert "§1.1" in ids(hits)[:2]
+
+
+def test_retrieve_always_includes_the_control_sections(conn):
+    """A split purchase never sounds like §2.2, so §2.2 is not left to the search."""
+    secs = retrieve({"category": "hardware", "vendor": "Dell Direct", "amount": "400.00",
+                     "notes": "Monitor for home office.", "receipt_text": ""}, conn=conn)
+    got = ids(secs)
+    assert got[:len(CONTROL_SECTIONS)] == list(CONTROL_SECTIONS)
+    assert "§5.2" in got[len(CONTROL_SECTIONS):]            # the searched part still finds hardware
+    assert len(got) == len(set(got)) <= len(CONTROL_SECTIONS) + TOP_K
 
 
 def test_get_sections_by_id(conn):

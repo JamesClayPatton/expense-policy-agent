@@ -104,8 +104,9 @@ def build_graph():
     with_tools = llm.bind_tools(TOOLS + [Decision], tool_choice="required")
 
     def retrieve(state: State):
-        sections = retrieval.search(retrieval.query_text(state["request"]))
-        log.info("retrieved %s", ", ".join(f"{s.section_id} ({s.score:.2f})" for s in sections))
+        sections = retrieval.retrieve(state["request"])
+        log.info("retrieved %s", ", ".join(f"{s.section_id} ({s.score:.2f})" if s.score is not None
+                                           else s.section_id for s in sections))
         messages = prompt.format_messages(
             today=AS_OF.isoformat(),
             policy_sections=retrieval.format_sections(sections),
