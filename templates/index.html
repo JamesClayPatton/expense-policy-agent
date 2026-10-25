@@ -122,6 +122,40 @@
       {% endif %}
       </div>
     </section>
+
+    <section class="panel story">
+      <h2>How this was built, and what the evals found</h2>
+      <p>An interview take-home: build an agent you would trust, then prove it with evals.
+         The agent retrieves the policy sections that apply, runs three database checks, decides,
+         and a guard in plain code downgrades any approve that breaks a hard rule. A second model
+         judges the explanation. 56 test cases across eight slices, scored by seven deterministic
+         checks and the judge, in LangSmith.</p>
+      <ol>
+        <li><b>Baseline: 73% correct.</b> Every missed citation was a retrieval miss. An expense
+            never sounds like the rules on approval authority or duplicates, so those sections were
+            never in context.</li>
+        <li><b>Fix retrieval: citations to 98%, accuracy <em>down</em> to 66%.</b> With the
+            approval section always visible, the model flagged every claim with no approver on
+            record. The policy says every reimbursement needs an approver other than the claimant,
+            and nothing had told the agent that it is the approver. The fix exposed an ambiguity the
+            baseline had hidden by never reading the section.</li>
+        <li><b>Prompt revisions and a date guard: 86% correct, error cost from 0.13 to 0.04.</b>
+            One paragraph says who the agent is. A guard rule handles the 30-day deadline, because
+            the model miscounted day 31 in every run.</li>
+      </ol>
+      <table>
+        <tr><th></th><th class="num">baseline</th><th class="num">+ control sections</th><th class="num">+ prompt v2</th><th class="num">+ prompt v3, date guard</th></tr>
+        <tr><td>decision correct</td><td class="num">0.73</td><td class="num">0.66</td><td class="num">0.71</td><td class="num"><b>0.86</b></td></tr>
+        <tr><td>error cost (wrong approval 1.0, needless flag 0.25)</td><td class="num">0.13</td><td class="num">0.11</td><td class="num">0.11</td><td class="num"><b>0.04</b></td></tr>
+        <tr><td>expected section cited</td><td class="num">0.75</td><td class="num">0.98</td><td class="num">1.00</td><td class="num">1.00</td></tr>
+        <tr><td>guard overruled the model</td><td class="num">0.07</td><td class="num">0.02</td><td class="num">0.00</td><td class="num">0.04</td></tr>
+      </table>
+      <p class="muted">Single runs. Three baseline runs with nothing changed scored 0.84, 0.79 and 0.73, so
+         small differences are noise; the error cost and citation changes are not. Known failures,
+         the dataset, and the production eval plan are in the README.
+         <a href="https://github.com/JamesClayPatton/expense-policy-agent" target="_blank" rel="noopener">Repository ↗</a> ·
+         <a href="https://smith.langchain.com/o/c1f30122-eda4-405c-adc0-09c9911ed51f/datasets/82211646-1c04-47c7-9ea1-b5c4378a5356" target="_blank" rel="noopener">Dataset and experiments in LangSmith ↗</a></p>
+    </section>
   </main>
 
   <script>

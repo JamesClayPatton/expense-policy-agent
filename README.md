@@ -64,7 +64,7 @@ pip install -r requirements.txt
 copy .env.example .env            # fill it in
 psql "$DATABASE_URL" -f db/schema.sql -f db/seed.sql    # or paste both into the Supabase SQL editor
 python -m expense_agent.ingest    # embeds the policy: 20 sections
-python app.py                     # http://127.0.0.1:5050
+python app.py                     # http://127.0.0.1:5050 (add --debug to reload on edits)
 ```
 
 The page has a "Load an example" menu. Each review shows the decision, the citations linked to the policy PDF, the checks that ran, the judge scores, and a link to its trace. `/admin` lists every recorded decision.

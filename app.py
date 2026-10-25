@@ -1,10 +1,12 @@
 """Single-page web UI for the expense review agent.
 
-Run with: python app.py
+    python app.py              # http://127.0.0.1:5050
+    python app.py 8806 --debug # another port; --debug reloads on edits
 """
 import json
 import logging
 import re
+import sys
 from decimal import Decimal, InvalidOperation
 from functools import lru_cache
 
@@ -155,4 +157,5 @@ def admin():
 
 
 if __name__ == "__main__":
-    app.run(port=5050, debug=True)
+    ports = [int(a) for a in sys.argv[1:] if a.isdigit()]
+    app.run(port=ports[0] if ports else 5050, debug="--debug" in sys.argv)
