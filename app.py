@@ -10,6 +10,7 @@ import sys
 from decimal import Decimal, InvalidOperation
 from functools import lru_cache
 
+import markdown
 from flask import Flask, redirect, render_template, request, send_file, url_for
 from pypdf import PdfReader
 
@@ -57,6 +58,14 @@ def policy_pages() -> dict[str, int]:
         for section_id in re.findall(r"^(§\d+\.\d+) ", page.extract_text() or "", re.MULTILINE):
             pages.setdefault(section_id, number)
     return pages
+
+
+@lru_cache(maxsize=1)
+def readme_html() -> str:
+    """The README, rendered under the tool so the page and the document cannot drift.
+    Its own title is dropped because the page already has one."""
+    text = (ROOT / "README.md").read_text(encoding="utf-8").split("\n", 1)[1]
+    return markdown.markdown(text, extensions=["tables", "fenced_code", "toc"])
 
 
 @app.route("/policy")
@@ -127,7 +136,7 @@ def index():
     employees, categories = load_choices()
     return render_template("index.html", form=form, employees=employees,
                            categories=categories, examples=load_examples(),
-                           policy_pages=policy_pages(), scores=SCORES,
+                           policy_pages=policy_pages(), scores=SCORES, readme=readme_html(),
                            review=review, judgement=judgement, error=error)
 
 

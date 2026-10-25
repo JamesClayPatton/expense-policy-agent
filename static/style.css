@@ -58,6 +58,24 @@ a { color: var(--accent); }
 .story li { margin-bottom: 8px; }
 .story table { margin: 14px 0; }
 
+/* the README, rendered under the tool */
+.doc h2:not(:first-child) { margin-top: 28px; padding-top: 16px; border-top: 1px solid var(--line); }
+.doc h3 { font-size: 14px; text-transform: none; letter-spacing: 0; color: var(--ink); margin-top: 20px; }
+.doc pre { background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 12px 14px; overflow-x: auto; font-size: 13px; line-height: 1.4; }
+.doc code { font-size: 13px; }
+.doc table { margin: 12px 0 18px; }
+.doc li { margin-bottom: 6px; }
+.doc ul, .doc ol { padding-left: 22px; }
+
+/* the pipeline, drawn as stacked steps */
+.flow { max-width: 720px; }
+.step { position: relative; border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; margin-bottom: 26px; }
+.step b { display: block; margin-bottom: 2px; color: var(--accent); }
+.step span { color: var(--muted); font-size: 14px; }
+.step::after { content: "▼"; position: absolute; left: 50%; bottom: -22px; transform: translateX(-50%); color: var(--line); font-size: 14px; }
+.step.last { margin-bottom: 0; }
+.step.last::after { content: none; }
+
 /* judge scores on the decision panel */
 .scores span { display: inline-block; margin: 0 14px 6px 0; }
 .scores b { color: var(--accent); }

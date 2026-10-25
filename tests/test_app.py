@@ -59,6 +59,13 @@ def test_an_unknown_decision_id_shows_a_blank_page(client):
     assert "Submit an expense to see the decision here." in html
 
 
+def test_the_readme_is_rendered_under_the_tool(client):
+    html = client.get("/").get_data(as_text=True)
+    assert "<h2 id=\"quickstart\">Quickstart</h2>" in html
+    assert "<table>" in html                       # the results tables came through
+    assert html.count("Expense Policy Agent</h1>") == 1   # the README's own title is dropped
+
+
 def test_a_bad_amount_shows_an_error_without_a_redirect(client):
     resp = client.post("/", data={**REQUEST, "amount": "lots"})
     assert resp.status_code == 200
