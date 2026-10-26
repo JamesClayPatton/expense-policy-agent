@@ -72,6 +72,12 @@ def test_a_saved_decision_renders_without_running_the_agent(client, saved, monke
     assert "Grounded <b>5</b>" in html
 
 
+def test_times_are_shown_in_central_time():
+    from datetime import datetime, timezone
+    assert web.central(datetime(2026, 10, 26, 17, 6, tzinfo=timezone.utc)) == "Oct 26, 12:06 PM"
+    assert web.central(datetime(2026, 12, 1, 17, 6, tzinfo=timezone.utc)) == "Dec 01, 11:06 AM"
+
+
 def test_an_unknown_decision_id_shows_a_blank_page(client):
     html = client.get("/?decision=00000000-0000-0000-0000-000000000000").get_data(as_text=True)
     assert "Submit an expense to see the decision here." in html

@@ -9,7 +9,7 @@
 <body>
   <header>
     <h1>Decisions</h1>
-    <p>Every review the agent has made, with the judge's scores. <a href="/">Back to the form</a></p>
+    <p>Every review the agent has made, with the judge's scores. Times are Central. <a href="/">Back to the form</a></p>
   </header>
 
   <main class="wide">
@@ -20,28 +20,31 @@
         {% for k in scores %}<span>avg {{ k | pretty | lower }} <b>{{ '%.1f' | format(averages[k]) }}</b></span>{% endfor %}
       </p>
 
-      <table>
+      <table class="decisions">
         <thead>
           <tr>
-            <th>When</th><th>Employee</th><th>Amount</th><th>Category</th><th>Decision</th>
-            {% for k in scores %}<th class="num">{{ k | pretty }}</th>{% endfor %}
-            <th>Trace</th>
+            <th>When</th><th>Employee</th><th>Amount</th><th class="wide-only">Category</th><th>Decision</th>
+            {% for k in scores %}<th class="num wide-only">{{ k | pretty }}</th>{% endfor %}
+            <th class="wide-only">Trace</th>
           </tr>
         </thead>
         <tbody>
           {% for r in rows %}
           <tr class="item" onclick="this.nextElementSibling.classList.toggle('open')">
-            <td>{{ r.created_at.strftime('%b %d %H:%M') }}</td>
-            <td>{{ r.employee_id }} · {{ r.name }}</td>
+            <td>{{ r.created_at | central }}</td>
+            <td>{{ r.employee_id }} <span class="name">{{ r.name }}</span></td>
             <td>${{ '%.2f' | format(r.amount) }}</td>
-            <td>{{ r.category | pretty }}</td>
+            <td class="wide-only">{{ r.category | pretty }}</td>
             <td><span class="badge small {{ r.final_decision }}">{{ r.final_decision | pretty }}</span>
                 {% if r.guard_overruled %}<span class="guard" title="{{ r.guard_reason }}">guard</span>{% endif %}</td>
-            {% for k in scores %}<td class="num">{{ r[k] if r[k] else '–' }}</td>{% endfor %}
-            <td>{% if r.trace_url %}<a href="{{ r.trace_url }}" target="_blank" rel="noopener" onclick="event.stopPropagation()">open ↗</a>{% endif %}</td>
+            {% for k in scores %}<td class="num wide-only">{{ r[k] if r[k] else '–' }}</td>{% endfor %}
+            <td class="wide-only">{% if r.trace_url %}<a href="{{ r.trace_url }}" target="_blank" rel="noopener" onclick="event.stopPropagation()">open ↗</a>{% endif %}</td>
           </tr>
           <tr class="detail">
             <td colspan="{{ 6 + scores | length }}">
+              <p class="narrow-only muted">{{ r.category | pretty }} ·
+                {% for k in scores %}{{ k | pretty | lower }} <b>{{ r[k] if r[k] else '–' }}</b> · {% endfor %}
+                {% if r.trace_url %}<a href="{{ r.trace_url }}" target="_blank" rel="noopener">trace ↗</a>{% else %}no trace{% endif %}</p>
               <h3>Reason</h3>
               <p>{{ r.reason }}</p>
               <h3>Policy cited</h3>

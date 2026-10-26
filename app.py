@@ -8,6 +8,7 @@ import logging
 import re
 import sys
 import threading
+from zoneinfo import ZoneInfo
 from decimal import Decimal, InvalidOperation
 from functools import lru_cache
 
@@ -33,6 +34,12 @@ def pretty(value):
     """Display label for a stored value: 'client_entertainment' -> 'Client entertainment'."""
     text = str(value).replace("_", " ")
     return ACRONYMS.get(text, text[:1].upper() + text[1:])
+
+@app.template_filter("central")
+def central(when):
+    """A stored timestamp as a short Central time, the team's own clock."""
+    return when.astimezone(ZoneInfo("America/Chicago")).strftime("%b %d, %I:%M %p")
+
 
 FIELDS = ["employee_id", "amount", "category", "transaction_date",
           "vendor", "approver_id", "notes", "receipt_text"]
