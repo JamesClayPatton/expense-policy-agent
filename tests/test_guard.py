@@ -60,6 +60,17 @@ def test_late_submission(conn):
         "submitted 31 days after the transaction, over the 30-day limit (§1.1)"]
 
 
+def test_reviewing_the_same_expense_again_is_not_a_duplicate(conn):
+    """Decisions are an audit log, not claims: running a demo example twice must
+    not make the second run a duplicate of the first, or eat into the budget."""
+    from expense_agent.tools import record_decision
+    assert check(LUNCH, ["§4.1"], conn=conn) == []
+    record_decision(request_id="demo", employee_id=LUNCH["employee_id"], amount=LUNCH["amount"],
+                    category="meals", model_decision="approve", final_decision="approve",
+                    reason="Fine.", policy_ids=["§4.1"], request=LUNCH, conn=conn)
+    assert check(LUNCH, ["§4.1"], conn=conn) == []
+
+
 def test_unknown_approver(conn):
     assert check({**LUNCH, "approver_id": "E999"}, ["§4.1"], conn=conn) == ["approver E999 not found"]
 
