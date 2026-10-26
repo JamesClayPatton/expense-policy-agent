@@ -78,6 +78,20 @@ def search(text: str, k: int = TOP_K, exclude: tuple[str, ...] = (),
         return query(own)
 
 
+def all_sections(conn: psycopg.Connection | None = None) -> list[Section]:
+    """The whole policy, in order. For the single-prompt baseline, which has no retrieval."""
+    def query(c):
+        with c.cursor() as cur:
+            cur.execute("select section_id, chapter, title, content from policy_chunks")
+            return sorted(_rows_to_sections(cur.fetchall()),
+                          key=lambda s: tuple(int(n) for n in s.section_id[1:].split(".")))
+
+    if conn is not None:
+        return query(conn)
+    with connect() as own:
+        return query(own)
+
+
 def retrieve(request: dict, conn: psycopg.Connection | None = None) -> list[Section]:
     """The sections the agent sees: the control sections, then the best matches."""
     return (get_sections(list(CONTROL_SECTIONS), conn=conn)
