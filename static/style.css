@@ -86,14 +86,7 @@ html { scroll-behavior: smooth; }
 .doc li { margin-bottom: 6px; }
 .doc ul, .doc ol { padding-left: 22px; }
 
-/* the pipeline, drawn as stacked steps */
-.flow { max-width: 720px; }
-.step { position: relative; border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; margin-bottom: 26px; }
-.step b { display: block; margin-bottom: 2px; color: var(--accent); }
-.step span { color: var(--muted); font-size: 14px; }
-.step::after { content: "▼"; position: absolute; left: 50%; bottom: -22px; transform: translateX(-50%); color: var(--line); font-size: 14px; }
-.step.last { margin-bottom: 0; }
-.step.last::after { content: none; }
+.doc img { max-width: 100%; height: auto; border: 1px solid var(--line); border-radius: 8px; }
 
 /* judge scores on the decision panel */
 .scores span { display: inline-block; margin: 0 14px 6px 0; }

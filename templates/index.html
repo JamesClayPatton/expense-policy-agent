@@ -126,7 +126,7 @@
     <section class="panel story" id="deliverables">
       <h2>What's here</h2>
       <div class="cards">
-        <a class="card" href="#diagram"><b>Diagram of the agent</b>Retrieve, agent with three tools, decision, guard in plain code, record, judge on a second model.</a>
+        <a class="card" href="#how-it-works"><b>Diagram of the agent</b>Form, LangGraph with retrieve, agent, tools and Decision, then guard, record and judge, all traced in LangSmith.</a>
         <a class="card" href="#quickstart"><b>README with quickstart</b>Seven commands from clone to a running page. The README is rendered in full below.</a>
         <a class="card" href="#traces-and-evaluation-runs"><b>Traces and evaluation runs</b>Public links, no account needed: the dataset with four experiments and six example traces.</a>
         <a class="card" href="#before-and-after"><b>Before and after</b>Decision accuracy 0.73 to 0.86, error cost 0.13 to 0.04, citations 0.75 to 1.00, with the dip in the middle explained.</a>
@@ -135,34 +135,6 @@
         <a class="card" href="#evaluating-this-in-production"><b>Evaluating in production</b>Online checks on every decision, a sampled judge, and the human override rate as the main number.</a>
         <a class="card" href="https://github.com/JamesClayPatton/expense-policy-agent" target="_blank" rel="noopener">
           <b>Repository ↗</b>Python, LangGraph, LangSmith, Postgres with pgvector. Nine modules, about 140 tests, one dependency file.</a>
-      </div>
-    </section>
-
-    <section class="panel story" id="diagram">
-      <h2>How it works</h2>
-      <div class="flow">
-        <div class="step"><b>Expense request</b>
-          <span>The form above: employee, amount, category, vendor, approval on record, notes, receipt text.
-                The notes and receipt are the claimant's words and are treated as claims, not facts.</span></div>
-        <div class="step"><b>1. Retrieve policy (RAG)</b>
-          <span>The <a href="/policy" target="_blank" rel="noopener">policy</a> is stored one row per section in pgvector.
-                Eight control sections (eligibility, approval authority, splits, duplicates, budgets, prohibited items,
-                unaddressed cases) are always in context; similarity search adds the four closest category sections.</span></div>
-        <div class="step"><b>2. Agent (gpt-5-mini in a LangGraph loop)</b>
-          <span>Must call a tool every turn: look up the employee, the remaining monthly budget, or earlier claims
-                at the same vendor, or call Decision to finish.</span></div>
-        <div class="step"><b>3. Decision</b>
-          <span>Approve, flag for a human, or reject, with the policy sections relied on and a two-sentence reason.</span></div>
-        <div class="step"><b>4. Guard (plain code, not a model)</b>
-          <span>Looks the facts up itself and can only make the decision stricter. An approve becomes a flag on a missing
-                or made-up citation, an inactive employee, missing or over-limit approval, self-approval, a duplicate on
-                file, an overspent budget, or a late submission.</span></div>
-        <div class="step"><b>5. Record</b>
-          <span>The one write in the system, always last: the decision, what the agent saw, and the link to its
-                LangSmith trace. The <a href="/admin">dashboard</a> reads from here.</span></div>
-        <div class="step last"><b>6. Judge (claude-sonnet-5-5)</b>
-          <span>A different model scores the reason 1 to 5 on grounded, complete, clear and safe, with a quoted piece
-                of evidence for each.</span></div>
       </div>
     </section>
 

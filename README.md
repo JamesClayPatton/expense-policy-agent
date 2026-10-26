@@ -39,37 +39,7 @@ python -m evals.run <name>        # runs the dataset, writes evals/results/<name
 
 ## How it works
 
-```
- expense request (form)
-        │
-        ▼
- ┌─────────────────┐     ┌──────────────────────────────┐
- │ retrieve        │────▶│ policy_chunks (pgvector)     │
- │ (RAG)           │     │ 8 control sections, always   │
- └────────┬────────┘     │ + top 4 by similarity        │
-          ▼              └──────────────────────────────┘
- ┌─────────────────┐     ┌──────────────────────────────┐
- │ agent           │────▶│ get_employee                 │
- │ gpt-5-mini      │◀────│ get_budget_remaining         │
- │ LangGraph loop  │     │ find_duplicates              │
- └────────┬────────┘     └──────────────────────────────┘
-          ▼
-   Decision {decision, policy_ids, reason}
-          │
-          ▼
- ┌─────────────────┐
- │ guard           │  plain code; can only make a decision stricter
- └────────┬────────┘
-          ▼
-   record_decision ──▶ decisions table, LangSmith trace
-          │
-          ▼
- ┌─────────────────┐
- │ judge           │  claude-sonnet-5-5 scores the reason 1 to 5 on
- │ (different      │  grounded, complete, clear, safe
- │  model)         │
- └─────────────────┘
-```
+![Architecture: form, LangGraph with retrieve, agent, tools and Decision, then guard, record and judge, over Postgres with pgvector, all traced in LangSmith](static/architecture.svg)
 
 - **Retrieve.** The policy PDF is split by section heading (`§4.2` and so on) and embedded, one row per section, so every citation points at a whole section. The eight control sections (eligibility, spending standards, approval authority, splits, duplicates, budgets, prohibited items, unaddressed cases) are always in context. Similarity search over the rest picks the category rules.
 - **Agent.** A LangGraph loop: the model must call a tool every turn, either a lookup or `Decision` to finish, so the decision costs no extra call. The prompt lives in LangSmith and is pinned by commit hash in `.env`.
