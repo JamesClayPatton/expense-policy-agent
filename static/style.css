@@ -59,8 +59,12 @@ a { color: var(--accent); }
 .story table { margin: 14px 0; }
 
 /* the README, rendered under the tool */
-.toc a { display: inline-block; margin: 0 8px 8px 0; padding: 4px 10px; border: 1px solid var(--line); border-radius: 999px; font-size: 13px; text-decoration: none; }
-.toc a:hover { background: var(--bg); }
+/* one card per item on the submission list */
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+.card { display: block; border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; color: var(--muted); font-size: 14px; text-decoration: none; }
+.card:hover { background: var(--bg); }
+.card b { display: block; margin-bottom: 4px; color: var(--accent); font-size: 15px; }
+html { scroll-behavior: smooth; }
 .doc h2:not(:first-child) { margin-top: 28px; padding-top: 16px; border-top: 1px solid var(--line); }
 .doc h3 { font-size: 14px; text-transform: none; letter-spacing: 0; color: var(--ink); margin-top: 20px; }
 .doc pre { background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 12px 14px; overflow-x: auto; font-size: 13px; line-height: 1.4; }

@@ -123,7 +123,22 @@
       </div>
     </section>
 
-    <section class="panel story">
+    <section class="panel story" id="deliverables">
+      <h2>What's here</h2>
+      <div class="cards">
+        <a class="card" href="https://github.com/JamesClayPatton/expense-policy-agent" target="_blank" rel="noopener">
+          <b>Repository ↗</b>Python, LangGraph, LangSmith, Postgres with pgvector. Nine modules, about 140 tests, one dependency file.</a>
+        <a class="card" href="#quickstart"><b>README with quickstart</b>Seven commands from clone to a running page. The README is rendered in full below.</a>
+        <a class="card" href="#diagram"><b>Diagram of the agent</b>Retrieve, agent with three tools, decision, guard in plain code, record, judge on a second model.</a>
+        <a class="card" href="#traces-and-evaluation-runs"><b>Traces and evaluation runs</b>Public links, no account needed: the dataset with four experiments and six example traces.</a>
+        <a class="card" href="#before-and-after"><b>Before and after</b>Decision accuracy 0.73 to 0.86, error cost 0.13 to 0.04, citations 0.75 to 1.00, with the dip in the middle explained.</a>
+        <a class="card" href="#dataset-and-evaluators"><b>Dataset and evaluators</b>56 cases in eight slices. Seven deterministic checks and a four-score LLM judge, and why each.</a>
+        <a class="card" href="#known-failures-and-limitations"><b>Known failures and limitations</b>What the guard cannot see, a policy ambiguity, an uncalibrated judge, an incomplete run.</a>
+        <a class="card" href="#evaluating-this-in-production"><b>Evaluating in production</b>Online checks on every decision, a sampled judge, and the human override rate as the main number.</a>
+      </div>
+    </section>
+
+    <section class="panel story" id="diagram">
       <h2>How it works</h2>
       <div class="flow">
         <div class="step"><b>Expense request</b>
@@ -153,16 +168,8 @@
 
     <section class="panel story doc">
       <h2>The write-up</h2>
-      <p class="toc">
-        <a href="https://github.com/JamesClayPatton/expense-policy-agent" target="_blank" rel="noopener">Repository ↗</a>
-        <a href="#quickstart">Quickstart</a>
-        <a href="#how-it-works">Diagram</a>
-        <a href="#traces-and-evaluation-runs">Traces and eval runs</a>
-        <a href="#results">Before and after</a>
-        <a href="#evaluation">Dataset and evaluators</a>
-        <a href="#failures-tradeoffs-and-things-i-am-not-sure-about">Known failures</a>
-      </p>
-      <p class="muted">This is the repository README, rendered here so the page and the document stay the same.</p>
+      <p class="muted">This is the repository README, rendered here so the page and the document stay the same.
+         <a href="https://github.com/JamesClayPatton/expense-policy-agent" target="_blank" rel="noopener">Repository ↗</a></p>
       {{ readme | safe }}
     </section>
   </main>

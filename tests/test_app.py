@@ -63,6 +63,10 @@ def test_the_readme_is_rendered_under_the_tool(client):
     html = client.get("/").get_data(as_text=True)
     assert "<h2 id=\"quickstart\">Quickstart</h2>" in html
     assert "<table>" in html                       # the results tables came through
+    for anchor in ("quickstart", "diagram", "traces-and-evaluation-runs", "before-and-after",
+                   "dataset-and-evaluators", "known-failures-and-limitations",
+                   "evaluating-this-in-production"):
+        assert f'href="#{anchor}"' in html and f'id="{anchor}"' in html   # every card lands
     assert html.count("Expense Policy Agent</h1>") == 1   # the README's own title is dropped
 
 
