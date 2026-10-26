@@ -104,7 +104,7 @@ Private, for anyone with access to the organization `c1f30122-eda4-405c-adc0-09c
 Four experiments on the same dataset, same model (gpt-5-mini), same judge (claude-sonnet-5-5). One run each. Full per-slice tables are in `evals/results/`.
 
 | | baseline | + control sections | + prompt v2 | + prompt v3, date guard |
-|---|---|---|---|---|
+|---|:---:|:---:|:---:|:---:|
 | experiment | `baseline-eb2d6f22` | `fixed-sections-f6b3f1a9` | `prompt-v2-71ae2d1c` | `prompt-v3-558ec9f9` |
 | prompt commit | `3837744f` | `3837744f` | `7f9965de` | `b7c7d0e8` |
 | decision | 0.73 | 0.66 | 0.71 | **0.86** |
@@ -118,7 +118,7 @@ Four experiments on the same dataset, same model (gpt-5-mini), same judge (claud
 Decision accuracy by slice:
 
 | slice | n | baseline | + control sections | + prompt v2 | + prompt v3, date guard |
-|---|---|---|---|---|---|
+|---|:---:|:---:|:---:|:---:|:---:|
 | normal | 10 | 0.80 | 0.40 | 0.50 | 0.70 |
 | boundary | 11 | 0.73 | 0.36 | 0.45 | 0.82 |
 | gap | 5 | 1.00 | 1.00 | 0.80 | 1.00 |
@@ -146,7 +146,7 @@ Two things to know about the last run. **The LangSmith copy of `prompt-v3-558ec9
 56 cases in `evals/dataset.jsonl`, uploaded once to the LangSmith dataset `expense-policy-agent` and not changed since. Each case has the form fields, the expected decision, the sections it turns on (citing any one of them passes), text the reason must not repeat where relevant, and a one-paragraph reference for the judge.
 
 | slice | n | what it covers |
-|---|---|---|
+|---|:---:|---|
 | normal | 10 | plain in-policy claims that should be approved |
 | boundary | 11 | exactly at a limit, one cent over, day 30 and day 31 |
 | gap | 5 | things the policy does not address: should flag, not guess |
