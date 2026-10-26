@@ -92,12 +92,7 @@ These links are public and need no LangSmith account.
   - [An exact duplicate of an approved claim](https://smith.langchain.com/public/759ca910-8f04-4ac6-9bd9-46d1e23d83fa/r), flagged
   - [A crypto purchase the policy does not cover](https://smith.langchain.com/public/f29a6c46-4480-4a5d-893d-a1a1846fa295/r), flagged under §9.2
 - **Live reviews** from the web page each link to their own trace. With `PUBLIC_TRACES=true` in `.env` the link is a public share link; otherwise it opens in the private project.
-
-Private, for anyone with access to the organization `c1f30122-eda4-405c-adc0-09c9911ed51f`:
-
-- Project `expense-policy-agent`, one trace per review: [open the project](https://smith.langchain.com/o/c1f30122-eda4-405c-adc0-09c9911ed51f/projects/p/d96c3c8b-7fea-40ac-9563-1e7d0bc56e16)
-- Experiments: `baseline-eb2d6f22`, `fixed-sections-f6b3f1a9`, `prompt-v2-71ae2d1c`, `prompt-v3-558ec9f9`. Each one's metadata records the prompt commit and models that ran.
-- Prompts: `expense-agent-system` commits `3837744f` (baseline), `7f9965de` (v2) and `b7c7d0e8` (v3); `expense-judge` commit `614b1703`.
+- Each experiment's metadata records the prompt commit and the models that ran.
 
 ## Before and after
 
