@@ -58,7 +58,7 @@ def clean_ids(ids: list[str]) -> list[str]:
     the § into a broken escape, which is a formatting slip, not a wrong citation."""
     seen = []
     for id_ in ids:
-        for n in re.findall(r"\d+\.\d+", id_):
+        for n in re.findall(r"\d+\.\d+", id_.replace("\x00a7", "§")):
             if f"§{n}" not in seen:
                 seen.append(f"§{n}")
     return seen
