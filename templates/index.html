@@ -185,6 +185,14 @@
       }
     });
 
+    // Anything that leaves this page opens in a new tab. In-page anchors and "Start over" stay here.
+    for (const a of document.querySelectorAll('a[href]')) {
+      const href = a.getAttribute('href');
+      if (href.startsWith('#') || href === '/') continue;
+      a.target = '_blank';
+      a.rel = 'noopener';
+    }
+
     // Show that the review is running. It is one request, so this is a timer, not real progress.
     document.getElementById('review').addEventListener('submit', () => {
       const button = document.querySelector('#review button');
