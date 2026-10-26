@@ -23,6 +23,7 @@ class Settings:
     agent_prompt: str      # LangSmith prompt reference, e.g. expense-agent-system:3837744f
     judge_prompt: str
     policy_pdf: Path
+    public_traces: bool    # share each review's trace so the link needs no account
 
 
 def _require(name: str) -> str:
@@ -41,4 +42,5 @@ def load_settings() -> Settings:
         agent_prompt=_require("AGENT_PROMPT"),
         judge_prompt=_require("JUDGE_PROMPT"),
         policy_pdf=ROOT / "data" / "policy" / "northwind_expense_policy.pdf",
+        public_traces=os.environ.get("PUBLIC_TRACES", "").strip().lower() in ("1", "true"),
     )

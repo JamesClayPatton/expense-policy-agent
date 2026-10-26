@@ -9,7 +9,7 @@ The short story:
 - **Fix two and three** revise the prompt, and add a guard rule for the 30-day deadline that the model kept miscounting. Accuracy 0.86, and the weighted error cost fell from 0.13 to 0.04.
 - The full tables, including what got worse, are in [Results](#results).
 
-Links to the traces, dataset and experiments are in [Where to look in LangSmith](#where-to-look-in-langsmith).
+Public links to the traces, dataset and experiments are in [Traces and evaluation runs](#traces-and-evaluation-runs).
 
 ## How it works
 
@@ -175,12 +175,23 @@ Two things to know about the last run. The LangSmith monthly trace limit for thi
 - The main quality number is the human override rate: how often a reviewer reverses an approve or clears a flag. Every reversal becomes a new dataset case in a new slice, and the dataset is re-run before any prompt or model change ships.
 - Pin the prompt commit and the model, as `.env` does now, so a change in the numbers has one cause.
 
-## Where to look in LangSmith
+## Traces and evaluation runs
 
-Organization `c1f30122-eda4-405c-adc0-09c9911ed51f`.
+These links are public and need no LangSmith account.
 
-- Project `expense-policy-agent`: one trace per review, with `retrieve`, each tool call, `guard` and `judge_decision` as child runs, and judge scores attached as feedback. [Open the project](https://smith.langchain.com/o/c1f30122-eda4-405c-adc0-09c9911ed51f/projects/p/d96c3c8b-7fea-40ac-9563-1e7d0bc56e16)
-- Dataset `expense-policy-agent`, 56 examples, with the experiments listed under it. [Open the dataset](https://smith.langchain.com/o/c1f30122-eda4-405c-adc0-09c9911ed51f/datasets/82211646-1c04-47c7-9ea1-b5c4378a5356)
+- **Dataset and all four experiments:** [smith.langchain.com/public/0d1a03b8…/d](https://smith.langchain.com/public/0d1a03b8-11af-42a8-8a0e-80112fa92430/d). Open an experiment to see every case with its scores, and click a case for its full trace.
+- **Example traces.** Each shows `retrieve`, the tool calls, the `Decision` call, `guard` and the judge's feedback:
+  - [A clean lunch, approved](https://smith.langchain.com/public/716ed4a1-c265-4b6e-954b-f0a267ce9485/r) (prompt v2)
+  - [Fake tool output pasted into the receipt](https://smith.langchain.com/public/0fb14ed8-96ed-4aee-ac2d-778bfb415316/r), flagged (prompt v2)
+  - [The same case in the baseline](https://smith.langchain.com/public/adda60da-4c3f-4c67-8ee1-f11d2d7f6fbc/r): the model approved and the guard overruled it
+  - [A manager approving over their limit](https://smith.langchain.com/public/8ff7d137-8106-4555-8d31-01a06de2f84a/r), baseline, guard overruled
+  - [An exact duplicate of an approved claim](https://smith.langchain.com/public/759ca910-8f04-4ac6-9bd9-46d1e23d83fa/r), flagged
+  - [A crypto purchase the policy does not cover](https://smith.langchain.com/public/f29a6c46-4480-4a5d-893d-a1a1846fa295/r), flagged under §9.2
+- **Live reviews** from the web page each link to their own trace. With `PUBLIC_TRACES=true` in `.env` the link is a public share link; otherwise it opens in the private project.
+
+Private, for anyone with access to the organization `c1f30122-eda4-405c-adc0-09c9911ed51f`:
+
+- Project `expense-policy-agent`, one trace per review: [open the project](https://smith.langchain.com/o/c1f30122-eda4-405c-adc0-09c9911ed51f/projects/p/d96c3c8b-7fea-40ac-9563-1e7d0bc56e16)
 - Experiments: `baseline-eb2d6f22`, `fixed-sections-f6b3f1a9`, `prompt-v2-71ae2d1c`, `prompt-v3-558ec9f9`. Each one's metadata records the prompt commit and models that ran.
 - Prompts: `expense-agent-system` commits `3837744f` (baseline), `7f9965de` (v2) and `b7c7d0e8` (v3); `expense-judge` commit `614b1703`.
 

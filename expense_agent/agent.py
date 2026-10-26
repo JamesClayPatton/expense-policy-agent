@@ -6,8 +6,9 @@ from dataclasses import dataclass, field
 from functools import lru_cache
 
 from langchain_core.messages import AIMessage, ToolMessage
-from langsmith import traceable
+from langsmith import Client, traceable
 from langsmith.run_helpers import get_current_run_tree
+from langsmith.utils import LangSmithError
 
 from expense_agent.config import load_settings
 from expense_agent.graph import build_graph
@@ -38,6 +39,18 @@ def _graph():
     return build_graph()
 
 
+def public_trace_url(run_id: str) -> str | None:
+    """A share link for the trace that needs no LangSmith account. None when
+    LangSmith does not have the run, for example once the account's trace limit
+    is hit, so the caller can fall back to the private link."""
+    client = Client()
+    try:
+        return client.read_run_shared_link(run_id) or client.share_run(run_id)
+    except LangSmithError as e:
+        log.warning("could not share trace %s: %s", run_id, e)
+        return None
+
+
 def review_expense(request: dict, record: bool = True) -> Review:
     """Review one expense. Records the decision in the audit table unless told not
     to (eval runs pass record=False)."""
@@ -47,6 +60,8 @@ def review_expense(request: dict, record: bool = True) -> Review:
                                       "prompt_commit": prompt_commit,
                                       "model": settings.agent_model})
     if record:
+        if settings.public_traces and review.run_id:
+            review.trace_url = public_trace_url(review.run_id) or review.trace_url
         row = record_decision(
             request_id=str(uuid.uuid4()), employee_id=request["employee_id"],
             amount=request["amount"], category=request["category"],
