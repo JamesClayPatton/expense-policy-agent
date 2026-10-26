@@ -9,7 +9,7 @@ The short story:
 - **Fix two and three** revise the prompt, and add a guard rule for the 30-day deadline that the model kept miscounting. Accuracy 0.86, and the weighted error cost fell from 0.13 to 0.04.
 - The full tables, including what got worse, are in [Before and after](#before-and-after).
 
-The sections below follow the submission list: [Quickstart](#quickstart), [How it works](#how-it-works), [Traces and evaluation runs](#traces-and-evaluation-runs), [Before and after](#before-and-after), [Dataset and evaluators](#dataset-and-evaluators), [Known failures and limitations](#known-failures-and-limitations), [Evaluating this in production](#evaluating-this-in-production), [Repository layout](#repository-layout), [How I used AI assistance](#how-i-used-ai-assistance).
+The sections below follow the submission list: [Quickstart](#quickstart), [How it works](#how-it-works), [Traces and evaluation runs](#traces-and-evaluation-runs), [Before and after](#before-and-after), [Dataset and evaluators](#dataset-and-evaluators), [Known failures and limitations](#known-failures-and-limitations), [Evaluating this in production](#evaluating-this-in-production), [Repository layout](#repository-layout).
 
 ## Quickstart
 
@@ -217,7 +217,3 @@ db/schema.sql, seed.sql
 data/policy/            the Northwind policy, markdown and PDF
 tests/                  about 140 tests
 ```
-
-## How I used AI assistance
-
-_To be written._
