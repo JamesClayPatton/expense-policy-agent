@@ -160,10 +160,11 @@
       }
     });
 
-    // Anything that leaves this page opens in a new tab. In-page anchors and "Start over" stay here.
+    // Outside links and the policy PDF open in a new tab. In-page anchors, "Start over"
+    // and the dashboard stay in this one.
     for (const a of document.querySelectorAll('a[href]')) {
       const href = a.getAttribute('href');
-      if (href.startsWith('#') || href === '/') continue;
+      if (href.startsWith('#') || href === '/' || href === '/admin') continue;
       a.target = '_blank';
       a.rel = 'noopener';
     }
