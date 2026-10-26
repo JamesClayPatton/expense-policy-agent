@@ -65,6 +65,7 @@ def test_the_readme_is_rendered_under_the_tool(client):
     assert "<table>" in html                       # the results tables came through
     assert 'src="static/architecture.svg"' in html
     for anchor in ("quickstart", "how-it-works", "traces-and-evaluation-runs", "before-and-after",
+                   "compared-with-simpler-designs", "one-complete-run-reproducible",
                    "dataset-and-evaluators", "known-failures-and-limitations",
                    "evaluating-this-in-production"):
         assert f'href="#{anchor}"' in html and f'id="{anchor}"' in html   # every card lands
