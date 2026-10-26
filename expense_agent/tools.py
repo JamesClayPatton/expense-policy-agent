@@ -185,6 +185,7 @@ def record_decision(request_id: str, employee_id: str, amount: Decimal, category
                  Jsonb(tool_results, dumps=_dumps), prompt_commit, model, trace_url),
             )
             decision_id, created_at = cur.fetchone()
-        c.commit()
+        # No commit here: an owned connection commits when it closes, and a
+        # caller that passed one in (a test rolling back) keeps control.
         return {"decision_id": str(decision_id), "created_at": created_at}
     return _run(conn, query)
