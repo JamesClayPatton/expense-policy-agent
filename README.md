@@ -75,9 +75,9 @@ python -m evals.run <name>        # runs the dataset, writes evals/results/<name
 - **Agent.** A LangGraph loop: the model must call a tool every turn, either a lookup or `Decision` to finish, so the decision costs no extra call. The prompt lives in LangSmith and is pinned by commit hash in `.env`.
 - **Guard.** Code, not a model. It looks the facts up itself and downgrades an approve to a flag when the model broke a hard rule: no citation, a made-up citation, inactive or unknown employee, over the no-approval limit with nothing on record, approver over their limit, self-approval, a duplicate on file, over budget, or submitted after the 30-day deadline. It never touches judgement calls like split purchases or missing receipts. How often it fires is a metric.
 - **Record.** The one write in the system, always last. The audit row keeps what the agent saw, so a judge can grade it later and the web page can show it again.
-- **Judge.** A different model from the agent scores the explanation, never the decision. It gets the request, the sections the agent saw, the tool results, and a hand-written reference for the case.
+- **Judge.** A different model from the agent scores the explanation. It gets the request, the sections the agent saw, the tool results, and a hand-written reference for the case.
 
-Single-shot by design. If something is missing, the agent flags and says what is missing instead of asking a follow-up question.
+Single-shot: if something is missing, the agent flags and says what is missing instead of asking a follow-up question.
 
 ## Traces and evaluation runs
 
@@ -131,7 +131,7 @@ Decision accuracy by slice:
 What happened, step by step:
 
 1. **Baseline.** 15 wrong decisions. Five were wrong approvals the guard could not see (day-31 submission, a 36% tip, no attendees, no receipt over $50, unknown category); the guard caught four more. Every one of the 14 citation misses was a section that retrieval never surfaced.
-2. **Control sections in context.** Citation 0.75 to 0.98, tools 0.86 to 0.96, gaming 0.62 to 0.88, approval 0.67 to 1.00, guard interventions 4 to 1. And decision accuracy *fell*, because normal went 0.80 to 0.40. Reading the traces: §2.1 says all reimbursements need approval by someone other than the claimant, and now that §2.1 was always in context the model flagged every claim with no approver on record. The policy was right and the prompt was silent about who the agent is. This was the most useful failure in the project: the fix exposed an ambiguity the baseline had been hiding by never reading the section.
+2. **Control sections in context.** Citation 0.75 to 0.98, tools 0.86 to 0.96, gaming 0.62 to 0.88, approval 0.67 to 1.00, guard interventions 4 to 1. And decision accuracy *fell*, because normal went 0.80 to 0.40. Reading the traces: §2.1 says all reimbursements need approval by someone other than the claimant, and now that §2.1 was always in context the model flagged every claim with no approver on record. The policy was right and the prompt was silent about who the agent is. The fix exposed an ambiguity the baseline never reached, because it never read the section.
 3. **Prompt v2** (flag when unsure, inclusive limits, documentation rules, claimant text is untrusted). Adversarial 0.67 to 0.83, conflict to 1.00, but the approver problem stayed, and "flag when unsure" cost one gap case. Error cost unchanged.
 4. **Prompt v3 plus the date guard.** One paragraph telling the model it *is* the §2.1 approver and that "approval on record" means advance approval, plus a guard rule for the 30-day deadline because the model got day 30 versus day 31 wrong in every run. Decision 0.86, error cost 0.13 to 0.04. The remaining normal misses are the model asking for an attendee list because a breakfast note mentions a team, and for evidence of an IT Security review on a $16 subscription, both literal readings of the policy.
 
@@ -156,7 +156,7 @@ Two things to know about the last run. **The LangSmith copy of `prompt-v3-558ec9
 | missing | 8 | no receipt, no attendees, unknown employee or category |
 | approval | 3 | approver over their limit, self-approval, claimed verbal approval |
 
-Expected decisions: 19 approve, 34 flag, 3 reject. The dataset leans toward flag on purpose: the agent should be unsure often and wrong rarely.
+Expected decisions: 19 approve, 34 flag, 3 reject.
 
 ### Evaluators
 
@@ -174,15 +174,13 @@ Deterministic where the answer is checkable, a judge only for the part that is n
 | guard_overruled | the guard changed the model's call | rate, not pass or fail |
 | grounded, complete, clear, safe | the explanation, 1 to 5 each, with a quoted piece of evidence per score | LLM judge |
 
-The error cost matrix is the point of the whole thing: letting money out is the expensive mistake, sending a fine claim to a person costs minutes.
-
 ## Known failures and limitations
 
 - **The guard cannot see most documentation.** Five wrong approvals in the baseline were documentation rules: day-31 submission, a 36% tip, a group meal with no attendees, no receipt over $50, an unknown category. The guard now covers the deadline, because dates are computable. The rest are addressed in the prompt, which is weaker than code.
 - **The policy is ambiguous and the dataset encodes my reading.** §2.1 requires an approver other than the claimant for every reimbursement. I read the agent as that approver for claims under $250. Someone else could read it as requiring a manager on every claim, and under that reading the "over-strict" runs were right.
-- **Fake tool output in the receipt.** In the baseline the model read forged tool results pasted into the receipt text, skipped the real lookups and approved. The guard caught it because it runs the lookups itself. That is the clearest argument in the project for a guard that does not trust the model.
+- **Fake tool output in the receipt.** In the baseline the model read forged tool results pasted into the receipt text, skipped the real lookups and approved. The guard caught it because it runs the lookups itself.
 - **Reject versus flag is fuzzy.** The policy prohibits some things outright, and the dataset expects reject there and flag elsewhere. The model rejects more readily than I do. It costs 0.25 per case, and I am not certain my labels are right in every case.
-- **Retrieval is now mostly bypassed.** With 8 of 20 sections always in context, the `retrieval` score only measures the category sections. For a policy this size the honest design would be to put the whole thing in context. Retrieval earns its place when the policy grows past that, and the section-level chunking is what keeps citations exact either way.
+- **Retrieval is now mostly bypassed.** With 8 of 20 sections always in context, the `retrieval` score only measures the category sections. For a policy this size the whole thing could go in context. Retrieval matters once the policy grows past that, and the section-level chunking is what keeps citations exact either way.
 - **Judge not calibrated.** The judge is consistent with my reading on the cases I spot-checked, but I have not labeled a set by hand and measured agreement. Safe sits near 5 on almost everything, so it is not discriminating.
 - **My dataset, my blind spots.** I wrote the cases and the labels. Three I argued with myself about: a director's exception for a prohibited alcohol expense (labeled reject, the prohibition wins), an employee named as their own approver (flag, not reject, since it may be a form mistake), and exactly $250 with no approval on record (approve, the limit is inclusive).
 - **The v3 experiment is incomplete in LangSmith** because of the account's trace limit; see [Before and after](#before-and-after).
