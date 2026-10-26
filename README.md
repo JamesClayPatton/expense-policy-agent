@@ -10,7 +10,7 @@ The short story:
 - Against two simpler designs on the same dataset, a rules-only checker lets 18 claims through that it should not, and a single prompt with the whole policy and no tools lets 6 through. The agent lets 1 through. See [Compared with simpler designs](#compared-with-simpler-designs).
 - The full tables, including what got worse, are in [Before and after](#before-and-after).
 
-The sections below follow the submission list: [Quickstart](#quickstart), [How it works](#how-it-works), [Traces and evaluation runs](#traces-and-evaluation-runs), [Before and after](#before-and-after), [Compared with simpler designs](#compared-with-simpler-designs), [One complete run, reproducible](#one-complete-run-reproducible), [Dataset and evaluators](#dataset-and-evaluators), [Known failures and limitations](#known-failures-and-limitations), [Evaluating this in production](#evaluating-this-in-production), [Repository layout](#repository-layout).
+The sections below follow the submission list: [Quickstart](#quickstart), [How it works](#how-it-works), [Traces and evaluation runs](#traces-and-evaluation-runs), [Before and after](#before-and-after), [Compared with simpler designs](#compared-with-simpler-designs), [One complete run, reproducible](#one-complete-run-reproducible), [Speed](#speed), [Dataset and evaluators](#dataset-and-evaluators), [Known failures and limitations](#known-failures-and-limitations), [Evaluating this in production](#evaluating-this-in-production), [Repository layout](#repository-layout).
 
 ## Quickstart
 
@@ -46,7 +46,7 @@ python -m evals.run <name>        # runs the dataset, writes evals/results/<name
 - **Agent.** A LangGraph loop: the model must call a tool every turn, either a lookup or `Decision` to finish, so the decision costs no extra call. The prompt lives in LangSmith and is pinned by commit hash in `.env`.
 - **Guard.** Code, not a model. It looks the facts up itself and downgrades an approve to a flag when the model broke a hard rule: no citation, a made-up citation, inactive or unknown employee, over the no-approval limit with nothing on record, approver over their limit, self-approval, a duplicate on file, over budget, or submitted after the 30-day deadline. It never touches judgement calls like split purchases or missing receipts. How often it fires is a metric.
 - **Record.** The one write in the system, always last. The audit row keeps what the agent saw, so a judge can grade it later and the web page can show it again.
-- **Judge.** A different model from the agent scores the explanation. It gets the request, the sections the agent saw, the tool results, and a hand-written reference for the case.
+- **Judge.** A different model from the agent scores the explanation. It gets the request, the sections the agent saw, the tool results, and a hand-written reference for the case. It runs after the decision is shown, and the page fills the scores in when they are saved.
 
 Single-shot: if something is missing, the agent flags and says what is missing instead of asking a follow-up question.
 
@@ -54,7 +54,7 @@ Single-shot: if something is missing, the agent flags and says what is missing i
 
 These links are public and need no LangSmith account.
 
-- **Dataset and all six experiments:** [smith.langchain.com/public/0d1a03b8…/d](https://smith.langchain.com/public/0d1a03b8-11af-42a8-8a0e-80112fa92430/d). Open an experiment to see every case with its scores, and click a case for its full trace.
+- **Dataset and all seven experiments:** [smith.langchain.com/public/0d1a03b8…/d](https://smith.langchain.com/public/0d1a03b8-11af-42a8-8a0e-80112fa92430/d). Open an experiment to see every case with its scores, and click a case for its full trace.
 - **Example traces.** Each shows `retrieve`, the tool calls, the `Decision` call, `guard` and the judge's feedback:
   - [A clean lunch, approved](https://smith.langchain.com/public/716ed4a1-c265-4b6e-954b-f0a267ce9485/r) (prompt v2)
   - [Fake tool output pasted into the receipt](https://smith.langchain.com/public/0fb14ed8-96ed-4aee-ac2d-778bfb415316/r), flagged (prompt v2)
@@ -162,6 +162,24 @@ Confusion matrix, expected down and got across:
 | reject | 0 | 0 | **3** |
 
 To reproduce: check out `7a61be2`, set the models and prompt references above in `.env`, and run `python -m evals.run agent-v3 agent`. The database must hold the seed data and the ingested policy from the quickstart. Expect the decision score to land within a few points of 0.88, not on it, for the reasons in the noise paragraph.
+
+## Speed
+
+A review at the model's default reasoning effort takes about 19 seconds, 12 of them the model thinking across its two turns. Three changes, each measured:
+
+| | default effort | low effort (`AGENT_REASONING=low`) |
+|---|:---:|:---:|
+| experiment | `agent-v3-efbfbde3` | `reasoning-low-cfa9c1db` |
+| median review | 18.7 s | 8.6 s |
+| 90th percentile | 25.1 s | 11.6 s |
+| decision | 0.88 | 0.86 |
+| error_cost | 0.04 | 0.06 |
+| tools | 0.88 | 0.77 |
+| clear (judge) | 4.0 | 3.8 |
+
+- **Reasoning effort** is the main knob and halves the time. Decision and error cost move within the noise band. The real cost shows in `tools`: at low effort the model more often flags without finishing its lookups, and its reasons read a little less clearly. The live demo runs at low; the documented configuration above is the default.
+- **The judge runs after the decision.** It is not part of the decision, so the page shows the result as soon as it is recorded and fills the scores in a few seconds later. That takes the judge's five seconds off the wait.
+- **One database connection per review.** The retrieval, the three tools and the guard used to open a connection each. They now share one. Worth a second or two per review against a database in another region.
 
 ## Dataset and evaluators
 
