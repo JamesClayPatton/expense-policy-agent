@@ -9,7 +9,7 @@ import psycopg
 from openai import OpenAI
 
 from expense_agent.config import load_settings
-from expense_agent.db import connect
+from expense_agent.db import run
 
 # Sections that apply to every expense, whatever it sounds like: eligibility,
 # approval authority, splits, duplicates, budgets, prohibited items, gaps. The
@@ -72,10 +72,7 @@ def search(text: str, k: int = TOP_K, exclude: tuple[str, ...] = (),
             )
             return _rows_to_sections(cur.fetchall())
 
-    if conn is not None:
-        return query(conn)
-    with connect() as own:
-        return query(own)
+    return run(conn, query)
 
 
 def all_sections(conn: psycopg.Connection | None = None) -> list[Section]:
@@ -86,10 +83,7 @@ def all_sections(conn: psycopg.Connection | None = None) -> list[Section]:
             return sorted(_rows_to_sections(cur.fetchall()),
                           key=lambda s: tuple(int(n) for n in s.section_id[1:].split(".")))
 
-    if conn is not None:
-        return query(conn)
-    with connect() as own:
-        return query(own)
+    return run(conn, query)
 
 
 def retrieve(request: dict, conn: psycopg.Connection | None = None) -> list[Section]:
@@ -115,10 +109,7 @@ def get_sections(section_ids: list[str], conn: psycopg.Connection | None = None)
             )
             return _rows_to_sections(cur.fetchall())
 
-    if conn is not None:
-        return query(conn)
-    with connect() as own:
-        return query(own)
+    return run(conn, query)
 
 
 def format_sections(sections: list[Section]) -> str:

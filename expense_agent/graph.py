@@ -99,7 +99,9 @@ def format_request(r: dict) -> str:
 def build_graph():
     settings = load_settings()
     prompt = Client().pull_prompt(settings.agent_prompt)
-    llm = ChatOpenAI(model=settings.agent_model)
+    # Reasoning effort is the main speed knob: most of a review is the model thinking.
+    llm = ChatOpenAI(model=settings.agent_model,
+                     **({"reasoning_effort": settings.agent_reasoning} if settings.agent_reasoning else {}))
     # The model must call a tool every turn: a lookup, or Decision to finish.
     with_tools = llm.bind_tools(TOOLS + [Decision], tool_choice="required")
 

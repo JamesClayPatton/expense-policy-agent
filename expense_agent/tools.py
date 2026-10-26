@@ -11,7 +11,7 @@ import psycopg
 from psycopg.types.json import Jsonb
 
 from expense_agent.config import AS_OF
-from expense_agent.db import connect
+from expense_agent.db import run as _run
 
 # Spending in these states counts toward the monthly budget (policy 8.1).
 COUNTED_STATUSES = ("pending", "approved", "paid")
@@ -23,13 +23,6 @@ WINDOW_DAYS = 7
 
 def _dumps(value) -> str:
     return json.dumps(value, default=str)
-
-
-def _run(conn, fn):
-    if conn is not None:
-        return fn(conn)
-    with connect() as own:
-        return fn(own)
 
 
 def get_employee(employee_id: str, conn: psycopg.Connection | None = None) -> dict:

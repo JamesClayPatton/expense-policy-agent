@@ -18,6 +18,7 @@ AS_OF = date(2026, 10, 22)
 class Settings:
     database_url: str
     agent_model: str
+    agent_reasoning: str   # reasoning effort for the agent model: "" for the model's default
     judge_model: str
     embedding_model: str
     agent_prompt: str      # LangSmith prompt reference, e.g. expense-agent-system:3837744f
@@ -37,6 +38,7 @@ def load_settings() -> Settings:
     return Settings(
         database_url=_require("DATABASE_URL"),
         agent_model=_require("AGENT_MODEL"),
+        agent_reasoning=os.environ.get("AGENT_REASONING", "").strip(),
         judge_model=_require("JUDGE_MODEL"),
         embedding_model=os.environ.get("EMBEDDING_MODEL", "text-embedding-3-small"),
         agent_prompt=_require("AGENT_PROMPT"),

@@ -117,6 +117,7 @@ def main(prefix: str, which: str = "agent") -> None:
     known = known_sections()
     config = {
         "target": which, "model": settings.agent_model if which != "rules" else "none",
+        "reasoning": settings.agent_reasoning or "default",
         "prompt": settings.agent_prompt if which == "agent" else baselines.PROMPT_NAMES[which],
         "prompt_commit": prompt_commit, "judge_model": settings.judge_model,
         "judge_prompt": settings.judge_prompt, "embedding_model": settings.embedding_model,

@@ -11,6 +11,7 @@ from langsmith.run_helpers import get_current_run_tree
 from langsmith.utils import LangSmithError
 
 from expense_agent.config import load_settings
+from expense_agent.db import connect, sharing
 from expense_agent.graph import build_graph
 from expense_agent.guard import guard
 from expense_agent.tools import record_decision
@@ -83,15 +84,17 @@ def _review(request: dict, graph, metadata: dict) -> Review:
     if run is not None:
         run.metadata.update(metadata)
 
-    state = graph.invoke({"request": request, "messages": [], "decision": None})
-    d = state["decision"]
+    # One connection for the retrieval, the tools and the guard.
+    with connect() as conn, sharing(conn):
+        state = graph.invoke({"request": request, "messages": [], "decision": None})
+        d = state["decision"]
+        verdict = guard(d.decision, request, d.policy_ids, conn=conn)
+    if verdict.overruled:
+        log.info("guard overruled %s: %s", d.decision, verdict.reason)
     tools_called = [c["name"] for m in state["messages"]
                     if isinstance(m, AIMessage) for c in m.tool_calls if c["name"] != "Decision"]
     tool_results = [{"name": m.name, "content": json.loads(m.content)}
                     for m in state["messages"] if isinstance(m, ToolMessage)]
-    verdict = guard(d.decision, request, d.policy_ids)
-    if verdict.overruled:
-        log.info("guard overruled %s: %s", d.decision, verdict.reason)
     return Review(
         decision=verdict.decision,
         reason=d.reason,
