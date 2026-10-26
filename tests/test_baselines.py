@@ -1,6 +1,6 @@
 """The two comparison implementations. rules_only hits the database only;
 single_prompt makes one real model call."""
-from evals.baselines import REQUIRED_TOOLS, rules_only, single_prompt
+from evals.baselines import REQUIRED_TOOLS, clean_ids, rules_only, single_prompt
 from expense_agent.retrieval import all_sections
 
 LUNCH = {"employee_id": "E019", "amount": "28.50", "category": "meals",
@@ -27,6 +27,11 @@ def test_rules_only_flags_a_duplicate_and_cites_the_rule():
 def test_all_sections_is_the_whole_policy_in_order():
     ids = [s.section_id for s in all_sections()]
     assert len(ids) == 20 and ids[0] == "§1.1" and ids[-1] == "§9.2"
+
+
+def test_clean_ids_repairs_the_section_sign_structured_output_mangles():
+    """gpt-5-mini's JSON mode sometimes emits § as a broken escape: '\\x00a74.1'."""
+    assert clean_ids(["\x00a74.1", " \x00a78.2", "§2.1", "4.3", "§2.1"]) == ["§4.1", "§8.2", "§2.1", "§4.3"]
 
 
 def test_single_prompt_decides_with_the_whole_policy_and_no_tools():
