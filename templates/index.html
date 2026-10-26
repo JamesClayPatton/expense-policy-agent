@@ -76,7 +76,7 @@
       </form>
     </section>
 
-    <section class="panel">
+    <section class="panel" id="decision">
       <h2>Decision {% if review %}<a href="/">Start over</a>{% endif %}</h2>
       <div id="working" hidden>
         <p><span class="spinner"></span>Reviewing… <span id="elapsed">0</span> s</p>
@@ -191,6 +191,13 @@
       if (href.startsWith('#') || href === '/') continue;
       a.target = '_blank';
       a.rel = 'noopener';
+    }
+
+    // A finished review loads a fresh page. If the decision panel sits below the form
+    // (narrow window), bring it into view instead of landing at the top.
+    if (new URLSearchParams(location.search).has('decision')) {
+      const panel = document.getElementById('decision');
+      if (panel.getBoundingClientRect().top > innerHeight * 0.6) panel.scrollIntoView({ behavior: 'instant' });
     }
 
     // Show that the review is running. It is one request, so this is a timer, not real progress.
