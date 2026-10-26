@@ -110,7 +110,7 @@
             {% for k in scores %}<span title="{{ judgement.evidence[k] }}">{{ k | pretty }} <b>{{ judgement[k] }}</b></span>{% endfor %}
           </p>
         {% else %}
-          <p class="muted">The judge did not score this decision.</p>
+          <p class="muted" id="judge-pending"><span class="spinner"></span>The judge is scoring the reason. This page checks back on its own for half a minute.</p>
         {% endif %}
         {% if review.trace_url %}
           <p><a href="{{ review.trace_url }}" target="_blank" rel="noopener">Open the trace in LangSmith ↗</a></p>
@@ -172,6 +172,22 @@
     if (new URLSearchParams(location.search).has('decision')) {
       const panel = document.getElementById('decision');
       if (panel.getBoundingClientRect().top > innerHeight * 0.6) panel.scrollIntoView({ behavior: 'instant' });
+    }
+
+    // The judge runs after the decision is shown. Reload every few seconds until its scores
+    // are saved, then give up quietly: an unscored decision is still a decision.
+    const pending = document.getElementById('judge-pending');
+    if (pending) {
+      const tries = Number(sessionStorage.getItem('judge-tries') || 0);
+      if (tries < 10) {
+        sessionStorage.setItem('judge-tries', tries + 1);
+        setTimeout(() => location.reload(), 3000);
+      } else {
+        pending.innerHTML = 'The judge did not score this decision.';
+        sessionStorage.removeItem('judge-tries');
+      }
+    } else {
+      sessionStorage.removeItem('judge-tries');
     }
 
     // Show that the review is running. It is one request, so this is a timer, not real progress.

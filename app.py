@@ -7,6 +7,7 @@ import json
 import logging
 import re
 import sys
+import threading
 from decimal import Decimal, InvalidOperation
 from functools import lru_cache
 
@@ -100,6 +101,13 @@ def load_decision(decision_id: str):
     return form, review, judgement
 
 
+def judge_later(*args) -> None:
+    try:
+        judge_and_record(*args)
+    except Exception:  # the decision stands; the page keeps saying it is unscored
+        app.logger.exception("judge failed")
+
+
 @app.route("/", methods=["GET", "POST"])
 def index():
     form = {f: "" for f in FIELDS}
@@ -121,11 +129,11 @@ def index():
             except Exception as e:  # show the failure instead of hiding it
                 error = f"{type(e).__name__}: {e}"
             else:
-                try:
-                    judge_and_record(review.decision_id, review.run_id, req, review.retrieved_ids,
-                                     review.tool_results, review.decision, review.reason)
-                except Exception:  # the decision stands; the page says it was not scored
-                    app.logger.exception("judge failed")
+                # The judge takes a few seconds and is not part of the decision, so it
+                # runs after the response. The decision page shows its scores once saved.
+                threading.Thread(target=judge_later, daemon=True, args=(
+                    review.decision_id, review.run_id, req, review.retrieved_ids,
+                    review.tool_results, review.decision, review.reason)).start()
                 # Show the saved decision at its own URL, so a refresh does not resubmit.
                 return redirect(url_for("index", decision=review.decision_id))
     elif request.args.get("decision"):

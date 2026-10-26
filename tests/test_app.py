@@ -45,6 +45,24 @@ def test_a_review_redirects_to_the_saved_decision_so_refresh_does_not_resubmit(c
     assert resp.headers["Location"].endswith("/?decision=abc")
 
 
+def test_the_judge_runs_after_the_decision_is_shown(client, monkeypatch):
+    """The judge takes seconds and is not part of the decision, so the page does not wait."""
+    import threading
+    import time
+    judged = threading.Event()
+
+    def slow_judge(*a):
+        time.sleep(1.5)
+        judged.set()
+
+    monkeypatch.setattr(web, "review_expense", lambda req: Review("approve", "ok", decision_id="abc"))
+    monkeypatch.setattr(web, "judge_and_record", slow_judge)
+    start = time.monotonic()
+    assert client.post("/", data=REQUEST).status_code == 302
+    assert time.monotonic() - start < 1.0
+    assert judged.wait(5)
+
+
 def test_a_saved_decision_renders_without_running_the_agent(client, saved, monkeypatch):
     monkeypatch.setattr(web, "review_expense", lambda *a, **k: pytest.fail("the agent ran"))
     html = client.get(f"/?decision={saved}").get_data(as_text=True)
