@@ -1,5 +1,6 @@
 """The expense review agent. The web page calls review_expense() and nothing else."""
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from functools import lru_cache
 
@@ -9,7 +10,7 @@ from langsmith.run_helpers import get_current_run_tree
 
 from expense_agent.config import load_settings
 from expense_agent.db import connect, sharing
-from expense_agent.graph import build_graph, initial_state, tool_results
+from expense_agent.graph import build_graph, describe, initial_state, tool_results
 from expense_agent.traces import public_trace_url  # noqa: F401  (re-exported for callers)
 
 log = logging.getLogger("expense_agent")
@@ -36,18 +37,39 @@ def _graph():
     return build_graph()
 
 
-def review_expense(request: dict, record: bool = True) -> Review:
+def review_expense(request: dict, record: bool = True,
+                   on_step: Callable[[str, str], None] | None = None) -> Review:
     """Review one expense. The graph records the decision in the audit table
-    unless told not to (eval runs pass record=False)."""
+    unless told not to (eval runs pass record=False).
+
+    on_step(node, line) is called as each node finishes, so the page can show
+    the review as it happens."""
     graph, prompt_commit = _graph()
     settings = load_settings()
     return _review(request, record, graph, {"prompt": settings.agent_prompt,
                                             "prompt_commit": prompt_commit,
-                                            "model": settings.agent_model})
+                                            "model": settings.agent_model}, on_step)
+
+
+def run_graph(graph, state, on_step: Callable[[str, str], None] | None = None) -> dict:
+    """Stream the graph, reporting each node's progress, and return the final state."""
+    final = state
+    for mode, chunk in graph.stream(state, stream_mode=["updates", "values"]):
+        if mode == "values":
+            final = chunk
+        elif on_step is not None:
+            for node, update in chunk.items():
+                try:  # progress is a courtesy; it must never break a review
+                    for line in describe(node, update):
+                        on_step(node, line)
+                except Exception:
+                    log.exception("could not report progress for %s", node)
+    return final
 
 
 @traceable(name="review_expense", run_type="chain")
-def _review(request: dict, record: bool, graph, metadata: dict) -> Review:
+def _review(request: dict, record: bool, graph, metadata: dict,
+            on_step: Callable[[str, str], None] | None = None) -> Review:
     run = get_current_run_tree()
     if run is not None:
         run.metadata.update(metadata)
@@ -56,9 +78,9 @@ def _review(request: dict, record: bool, graph, metadata: dict) -> Review:
     # One connection for the retrieval, the tools, the guard and the write. It
     # commits when the block ends.
     with connect() as conn, sharing(conn):
-        state = graph.invoke(initial_state(
+        state = run_graph(graph, initial_state(
             request, record=record, run_id=run_id,
-            trace_url=run.get_url() if run is not None else None))
+            trace_url=run.get_url() if run is not None else None), on_step)
 
     d, v = state["decision"], state["verdict"]
     tools_called = [c["name"] for m in state["messages"]

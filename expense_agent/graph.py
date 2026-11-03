@@ -121,6 +121,82 @@ def tool_results(messages: list[AnyMessage]) -> list[dict]:
             for m in messages if isinstance(m, ToolMessage)]
 
 
+# --- Progress, as the page shows it while the graph runs ----------------------
+
+def _money(value) -> str:
+    return f"${Decimal(str(value)):,.2f}"
+
+
+def _short(value, limit: int = 24) -> str:
+    """A tool argument, clipped: the model wrote it, so it is not shown in full."""
+    text = str(value or "").replace("_", " ")
+    return text if len(text) <= limit else text[:limit - 1] + "…"
+
+
+def _describe_call(call: dict) -> str:
+    args = call["args"]
+    if call["name"] == "get_employee":
+        return f"Looking up employee {_short(args.get('employee_id'))}"
+    if call["name"] == "get_budget_remaining":
+        return f"Checking the {_short(args.get('category'))} budget"
+    if call["name"] == "find_duplicates":
+        return "Looking for earlier claims at the same vendor"
+    return f"Calling {_short(call['name'])}"
+
+
+def _describe_result(name: str, content: str) -> str:
+    try:
+        r = json.loads(content)
+    except (TypeError, ValueError):
+        return f"{_short(name)} failed"
+    if name == "get_employee":
+        if not r.get("found"):
+            return f"Employee {r.get('employee_id')} not found"
+        return f"{r['name']}, {r['role']}, {'active' if r['active'] else 'inactive'}"
+    if name == "get_budget_remaining":
+        if not r.get("found") or r.get("remaining") is None:
+            return "No monthly budget for this category"
+        return f"{_money(r['remaining'])} left of {_money(r['monthly_limit'])} this month"
+    if name == "find_duplicates":
+        n = len(r.get("matches", []))
+        if n == 0:
+            return "No earlier claims at this vendor in the last 7 days"
+        kinds = ", ".join(sorted({m["kind"].replace("_", " ") for m in r["matches"]}))
+        return f"{n} earlier claim{'s' if n > 1 else ''} at this vendor ({kinds})"
+    return f"{name} returned"
+
+
+def describe(node: str, update: dict) -> list[str]:
+    """One line per thing a node just did, for the page to show as it happens.
+    The lines come from code and database rows; the model's own words (its reason,
+    or text in a tool argument) are not repeated beyond a clipped id or category."""
+    update = update or {}
+    if node == "retrieve":
+        ids = [s.section_id for s in update.get("sections", [])]
+        return [f"Pulled {len(ids)} policy sections: {', '.join(ids)}"]
+    if node == "agent":
+        d = update.get("decision")
+        if d is not None:
+            return [f"Model decided to {d.decision}, citing {', '.join(d.policy_ids) or 'nothing'}"]
+        calls = [c for m in update.get("messages", []) if isinstance(m, AIMessage) for c in m.tool_calls]
+        return [_describe_call(c) for c in calls]
+    if node == "tools":
+        return [_describe_result(m.name, m.content)
+                for m in update.get("messages", []) if isinstance(m, ToolMessage)]
+    if node == "guard":
+        v = update.get("verdict")
+        if v is None:
+            return []
+        if v.overruled:
+            return [f"Guard changed approve to flag: {v.reason}"]
+        if v.decision == "approve":
+            return ["Guard re-checked the facts: no hard rule broken"]
+        return [f"Guard: nothing to check on a {v.decision}"]
+    if node == "record":
+        return ["Saved to the audit log"]
+    return []
+
+
 # --- Routing ------------------------------------------------------------------
 
 def after_agent(state: State) -> Literal["lookup", "decided"]:
