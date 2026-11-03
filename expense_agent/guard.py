@@ -14,7 +14,6 @@ from datetime import date
 from decimal import Decimal
 
 import psycopg
-from langsmith import traceable
 
 from expense_agent import retrieval, tools
 from expense_agent.config import AS_OF
@@ -87,7 +86,6 @@ def check(request: dict, policy_ids: list[str], conn: psycopg.Connection | None 
     return reasons
 
 
-@traceable(name="guard", run_type="chain")
 def guard(decision: str, request: dict, policy_ids: list[str],
           conn: psycopg.Connection | None = None) -> Verdict:
     """Apply the hard rules to the model's decision. Only an approve can change."""

@@ -42,10 +42,41 @@ python -m evals.run <name>        # runs the dataset, writes evals/results/<name
 
 ![Architecture: form, LangGraph with retrieve, agent, tools and Decision, then guard, record and judge, over Postgres with pgvector, all traced in LangSmith](static/architecture.svg)
 
+The graph itself, drawn by LangGraph from the same wiring the agent runs (`python -m expense_agent.graph` prints it, and `tests/test_graph.py` checks it):
+
+```mermaid
+---
+config:
+  flowchart:
+    curve: linear
+---
+graph TD;
+	__start__([<p>__start__</p>]):::first
+	retrieve(retrieve)
+	agent(agent)
+	tools(tools)
+	guard(guard)
+	record(record)
+	__end__([<p>__end__</p>]):::last
+	__start__ --> retrieve;
+	agent -. &nbsp;decided&nbsp; .-> guard;
+	agent -. &nbsp;lookup&nbsp; .-> tools;
+	guard -. &nbsp;eval run&nbsp; .-> __end__;
+	guard -. &nbsp;live run&nbsp; .-> record;
+	retrieve --> agent;
+	tools --> agent;
+	record --> __end__;
+	classDef default fill:#f2f0ff,line-height:1.2
+	classDef first fill-opacity:0
+	classDef last fill:#bfb6fc
+```
+
+The judge is not in the graph on purpose: it grades the decision after the page has shown it, so it never holds up the reply.
+
 - **Retrieve.** The policy PDF is split by section heading (`§4.2` and so on) and embedded, one row per section, so every citation points at a whole section. The eight control sections (eligibility, spending standards, approval authority, splits, duplicates, budgets, prohibited items, unaddressed cases) are always in context. Similarity search over the rest picks the category rules.
 - **Agent.** A LangGraph loop: the model must call a tool every turn, either a lookup or `Decision` to finish, so the decision costs no extra call. The prompt lives in LangSmith and is pinned by commit hash in `.env`.
 - **Guard.** Code, not a model. It looks the facts up itself and downgrades an approve to a flag when the model broke a hard rule: no citation, a made-up citation, inactive or unknown employee, over the no-approval limit with nothing on record, approver over their limit, self-approval, a duplicate on file, over budget, or submitted after the 30-day deadline. It never touches judgement calls like split purchases or missing receipts. How often it fires is a metric.
-- **Record.** The one write in the system, always last. The audit row keeps what the agent saw, so a judge can grade it later and the web page can show it again.
+- **Record.** The one write in the system, always the last node. Eval runs take the other branch and skip it. The audit row keeps what the agent saw, so a judge can grade it later and the web page can show it again.
 - **Judge.** A different model from the agent scores the explanation. It gets the request, the sections the agent saw, the tool results, and a hand-written reference for the case. It runs after the decision is shown, and the page fills the scores in when they are saved.
 
 Single-shot: if something is missing, the agent flags and says what is missing instead of asking a follow-up question.
@@ -244,9 +275,10 @@ expense_agent/
   ingest.py             PDF -> sections -> embeddings
   retrieval.py          control sections + similarity search
   tools.py              the three lookups and the one write
-  graph.py              LangGraph: retrieve -> agent <-> tools
+  graph.py              LangGraph: retrieve -> agent <-> tools -> guard -> record
   guard.py              hard rules in code
-  agent.py              review_expense(): graph, guard, record
+  agent.py              review_expense(): one connection, one trace, runs the graph
+  traces.py             public LangSmith share links
   judge.py              the LLM judge
 evals/
   dataset.jsonl         56 cases
