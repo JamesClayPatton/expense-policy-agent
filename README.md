@@ -81,6 +81,8 @@ The judge is not in the graph on purpose: it grades the decision after the page 
 
 Single-shot: if something is missing, the agent flags and says what is missing instead of asking a follow-up question.
 
+Streaming: the page runs the graph with `stream_mode="updates"` and lists each step as its node finishes (sections pulled, each lookup and what it found, the model's decision, the guard's check, the write), sent as server-sent events from `POST /review/stream`. The lines are built in code from tool results and database rows, not from the model's own words. When the decision is saved the page moves to its own URL, so a refresh does not resubmit. Without JavaScript the form posts to `/` and waits, as before.
+
 ## Traces and evaluation runs
 
 These links are public and need no LangSmith account.
@@ -256,7 +258,7 @@ Deterministic where the answer is checkable, a judge only for the part that is n
 - **Retrieval is now mostly bypassed.** With 8 of 20 sections always in context, the `retrieval` score only measures the category sections. For a policy this size the whole thing could go in context. Retrieval matters once the policy grows past that, and the section-level chunking is what keeps citations exact either way.
 - **Judge not calibrated.** The judge is consistent with my reading on the cases I spot-checked, but I have not labeled a set by hand and measured agreement. Safe sits near 5 on almost everything, so it is not discriminating.
 - **My dataset, my blind spots.** I wrote the cases and the labels. Three I argued with myself about: a director's exception for a prohibited alcohol expense (labeled reject, the prohibition wins), an employee named as their own approver (flag, not reject, since it may be a form mistake), and exactly $250 with no approval on record (approve, the limit is inclusive).
-- **Not built:** PII redaction before logging, streaming, a Docker setup. The guardrail check only confirms the agent does not repeat PII in its reason.
+- **Not built:** PII redaction before logging, a Docker setup. The guardrail check only confirms the agent does not repeat PII in its reason.
 
 ## Evaluating this in production
 

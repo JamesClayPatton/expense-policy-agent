@@ -80,8 +80,7 @@
       <h2>Decision {% if review %}<a href="/">Start over</a>{% endif %}</h2>
       <div id="working" hidden>
         <p><span class="spinner"></span>Reviewing… <span id="elapsed">0</span> s</p>
-        <p class="muted">The agent is retrieving policy sections, looking up the employee, budget and
-           past expenses, and deciding. A second model then scores the reason. This usually takes under a minute.</p>
+        <ol id="steps" class="steps" aria-live="polite"></ol>
       </div>
       <div id="result">
       {% if review %}
@@ -192,15 +191,88 @@
       sessionStorage.removeItem('judge-tries');
     }
 
-    // Show that the review is running. It is one request, so this is a timer, not real progress.
-    document.getElementById('review').addEventListener('submit', () => {
-      const button = document.querySelector('#review button');
+    // Run the review as a stream: each graph node reports what it did as it finishes,
+    // and the page lists it. When the decision is saved the page moves to its own URL,
+    // so a refresh shows it instead of resubmitting. Without streaming support the form
+    // posts the plain way and waits.
+    const reviewForm = document.getElementById('review');
+    const button = reviewForm.querySelector('button');
+    const working = document.getElementById('working');
+    const result = document.getElementById('result');
+    const steps = document.getElementById('steps');
+    let timer;
+
+    function startWorking() {
       button.disabled = true;
       button.textContent = 'Reviewing…';
-      document.getElementById('result').hidden = true;
-      document.getElementById('working').hidden = false;
+      result.hidden = true;
+      working.hidden = false;
+      steps.replaceChildren();
       const start = Date.now(), elapsed = document.getElementById('elapsed');
-      setInterval(() => { elapsed.textContent = Math.round((Date.now() - start) / 1000); }, 1000);
+      elapsed.textContent = '0';
+      timer = setInterval(() => { elapsed.textContent = Math.round((Date.now() - start) / 1000); }, 1000);
+    }
+
+    function addStep(text) {
+      const item = document.createElement('li');
+      item.textContent = text;          // plain text: nothing from the review is parsed as HTML
+      steps.append(item);
+    }
+
+    function showError(message) {
+      clearInterval(timer);
+      button.disabled = false;
+      button.textContent = 'Review expense';
+      working.hidden = true;
+      const p = document.createElement('p');
+      p.className = 'error';
+      p.textContent = message;
+      result.replaceChildren(p);
+      result.hidden = false;
+    }
+
+    reviewForm.addEventListener('submit', async event => {
+      startWorking();
+      if (!(window.fetch && window.ReadableStream && window.TextDecoder)) return;  // plain post
+      event.preventDefault();
+      let response;
+      try {
+        response = await fetch('/review/stream', { method: 'POST', body: new FormData(reviewForm) });
+      } catch {
+        clearInterval(timer);
+        reviewForm.submit();            // the stream never started: post the plain way
+        return;
+      }
+      try {
+        if (!response.ok || !response.body) throw new Error(`The server answered ${response.status}.`);
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        for (;;) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          let end;
+          while ((end = buffer.indexOf('\n\n')) >= 0) {
+            const block = buffer.slice(0, end);
+            buffer = buffer.slice(end + 2);
+            let kind = 'message', data = '';
+            for (const line of block.split('\n')) {
+              if (line.startsWith('event: ')) kind = line.slice(7);
+              else if (line.startsWith('data: ')) data += line.slice(6);
+            }
+            if (!data) continue;        // a keep-alive comment
+            const payload = JSON.parse(data);
+            if (kind === 'step') addStep(payload.text);
+            else if (kind === 'done') { location.href = payload.url; return; }
+            else if (kind === 'error') { showError(payload.message); return; }
+          }
+        }
+        throw new Error('The connection closed before the review finished.');
+      } catch (err) {
+        // Not resubmitted: the server may already be reviewing, and would record it twice.
+        showError(`${err.message} The review may still finish: check the dashboard.`);
+      }
     });
   </script>
 </body>

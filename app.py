@@ -5,6 +5,7 @@
 """
 import json
 import logging
+import queue
 import re
 import sys
 import threading
@@ -13,7 +14,7 @@ from decimal import Decimal, InvalidOperation
 from functools import lru_cache
 
 import markdown
-from flask import Flask, redirect, render_template, request, send_file, url_for
+from flask import Flask, Response, redirect, render_template, request, send_file, url_for
 from pypdf import PdfReader
 
 from expense_agent.agent import Review, review_expense
@@ -115,32 +116,87 @@ def judge_later(*args) -> None:
         app.logger.exception("judge failed")
 
 
+def start_judge(review: Review, req: dict) -> None:
+    """The judge takes a few seconds and is not part of the decision, so it runs
+    after the response. The decision page shows its scores once saved."""
+    threading.Thread(target=judge_later, daemon=True, args=(
+        review.decision_id, review.run_id, req, review.retrieved_ids,
+        review.tool_results, review.decision, review.reason)).start()
+
+
+def read_form():
+    """The submitted form, the request for the agent, and an error if the form is bad."""
+    form = {f: request.form.get(f, "").strip() for f in FIELDS}
+    try:
+        amount = Decimal(form["amount"])
+        if amount < 0:
+            raise InvalidOperation
+    except InvalidOperation:
+        return form, None, "Amount must be a positive number."
+    return form, {**form, "amount": amount, "submitted_date": AS_OF.isoformat()}, None
+
+
+def sse(event: str, data: dict) -> str:
+    return f"event: {event}\ndata: {json.dumps(data)}\n\n"
+
+
+@app.route("/review/stream", methods=["POST"])
+def review_stream():
+    """The same review as POST /, sent back as server-sent events while the graph
+    runs: a `step` per thing a node did, then `done` with the saved decision's URL
+    (so a refresh shows it rather than resubmitting), or `error`."""
+    form, req, error = read_form()
+    if error:
+        return Response(sse("error", {"message": error}), mimetype="text/event-stream")
+
+    events = queue.Queue()
+
+    def work():
+        try:
+            review = review_expense(req, on_step=lambda node, line: events.put(
+                ("step", {"node": node, "text": line})))
+        except Exception as e:  # show the failure instead of hiding it
+            app.logger.exception("review failed")
+            events.put(("error", {"message": f"{type(e).__name__}: {e}"}))
+        else:
+            start_judge(review, req)
+            events.put(("done", {"url": f"/?decision={review.decision_id}"}))
+
+    # The review runs on its own thread, so it finishes and is recorded even if the
+    # browser goes away mid-stream.
+    threading.Thread(target=work, daemon=True).start()
+
+    def stream():
+        yield ": started\n\n"
+        while True:
+            try:
+                kind, data = events.get(timeout=10)
+            except queue.Empty:  # keep proxies from closing a quiet connection
+                yield ": still working\n\n"
+                continue
+            yield sse(kind, data)
+            if kind != "step":
+                return
+
+    return Response(stream(), mimetype="text/event-stream",
+                    headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
 @app.route("/", methods=["GET", "POST"])
 def index():
     form = {f: "" for f in FIELDS}
     form["transaction_date"] = AS_OF.isoformat()
     review = judgement = error = None
 
-    if request.method == "POST":
-        form = {f: request.form.get(f, "").strip() for f in FIELDS}
-        try:
-            amount = Decimal(form["amount"])
-            if amount < 0:
-                raise InvalidOperation
-        except InvalidOperation:
-            error = "Amount must be a positive number."
-        else:
-            req = {**form, "amount": amount, "submitted_date": AS_OF.isoformat()}
+    if request.method == "POST":  # without JavaScript the form posts here and waits
+        form, req, error = read_form()
+        if req is not None:
             try:
                 review = review_expense(req)
             except Exception as e:  # show the failure instead of hiding it
                 error = f"{type(e).__name__}: {e}"
             else:
-                # The judge takes a few seconds and is not part of the decision, so it
-                # runs after the response. The decision page shows its scores once saved.
-                threading.Thread(target=judge_later, daemon=True, args=(
-                    review.decision_id, review.run_id, req, review.retrieved_ids,
-                    review.tool_results, review.decision, review.reason)).start()
+                start_judge(review, req)
                 # Show the saved decision at its own URL, so a refresh does not resubmit.
                 return redirect(url_for("index", decision=review.decision_id))
     elif request.args.get("decision"):

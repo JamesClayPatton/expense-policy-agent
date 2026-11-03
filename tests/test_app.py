@@ -100,3 +100,35 @@ def test_a_bad_amount_shows_an_error_without_a_redirect(client):
     resp = client.post("/", data={**REQUEST, "amount": "lots"})
     assert resp.status_code == 200
     assert "Amount must be a positive number." in resp.get_data(as_text=True)
+
+
+def test_the_stream_reports_each_step_then_where_the_saved_decision_lives(client, monkeypatch):
+    def fake_review(req, on_step=None):
+        on_step("retrieve", "Pulled 9 policy sections")
+        on_step("guard", "Guard re-checked the facts: no hard rule broken")
+        return Review("approve", "ok", decision_id="abc")
+
+    judged = []
+    monkeypatch.setattr(web, "review_expense", fake_review)
+    monkeypatch.setattr(web, "judge_and_record", lambda *a: judged.append(a))
+    resp = client.post("/review/stream", data=REQUEST)
+    assert resp.mimetype == "text/event-stream"
+    body = resp.get_data(as_text=True)
+    assert body.index("Pulled 9 policy sections") < body.index("no hard rule broken") < body.index("event: done")
+    assert '"url": "/?decision=abc"' in body
+    assert body.rstrip().endswith("}")                # done is the last event
+
+
+def test_the_stream_reports_a_failed_review(client, monkeypatch):
+    def broken(req, on_step=None):
+        raise RuntimeError("model unavailable")
+
+    monkeypatch.setattr(web, "review_expense", broken)
+    body = client.post("/review/stream", data=REQUEST).get_data(as_text=True)
+    assert "event: error" in body and "RuntimeError: model unavailable" in body
+
+
+def test_the_stream_rejects_a_bad_amount_without_running_the_agent(client, monkeypatch):
+    monkeypatch.setattr(web, "review_expense", lambda *a, **k: pytest.fail("the agent ran"))
+    body = client.post("/review/stream", data={**REQUEST, "amount": "lots"}).get_data(as_text=True)
+    assert "event: error" in body and "Amount must be a positive number." in body
